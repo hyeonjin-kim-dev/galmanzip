@@ -26,7 +26,7 @@ export default function KakaoMap() {
         }
 
         const map = new maps.Map(container, {
-          center: new maps.LatLng(37.5665, 126.978),
+          center: new maps.LatLng(37.3851, 127.1233), // 서현역
           level: 8,
         })
 

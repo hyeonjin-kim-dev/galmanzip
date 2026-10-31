@@ -30,4 +30,18 @@ Kakao 지도 Web SDK를 사용하려면 서비스 소유자의 카카오 앱과 
 
 2026년 10월 31일 사용자가 외부 설정 등록을 완료했다고 알렸다. 이후 [지도 화면 자동 배포](https://github.com/hyeonjin-kim-dev/galmanzip/actions/runs/41197129729)에서 지도 키 존재 확인·타입 검사·빌드 및 Pages 게시가 모두 성공했다. 작업 환경의 네트워크 허용 목록에 배포 사이트와 Kakao 호스트가 포함되어 있지 않아 실제 지도 타일 표시를 직접 검증하지는 못했다. 배포 성공과 브라우저에서의 지도 표시 검증을 구분한다.
 
+## SDK 요청의 403·ORB 오류 확인
+
+2026년 10월 31일 실제 배포에서 SDK 요청의 `403 Forbidden`과 `ERR_BLOCKED_BY_ORB`가 발생했다. 사용자는 카카오 개발자 콘솔의 **제품 설정 → 카카오맵** 미활성화가 원인이었으며, 활성화 후 지도가 표시되는 것을 확인했다고 알렸다. 이 사례는 사용자 확인으로 해결되었다.
+
+향후 같은 오류가 발생하더라도 원인이 같다고 단정하지 않는다. 게시 성공과 실제 지도 표시를 구분하고, 원인이 확인되지 않았을 때는 다음 순서로 점검한다.
+
+- 요청에 사용된 키가 해당 카카오 앱의 **JavaScript 키**인지 대조한다. 키의 길이나 모양만으로 키 종류와 권한이 올바르다고 판단하지 않는다.
+- 허용 도메인은 실제 사용 중인 **JavaScript 키 아래의 JavaScript SDK 도메인**에 등록해야 한다. **제품 링크 관리 → 웹 도메인**에만 등록한 것으로 SDK 사용 허용을 대신할 수 없다. [동일한 ORB 증상에 대한 카카오 담당자 안내](https://devtalk.kakao.com/t/sdk-js-failed-net-err-blocked-by-orb/148988)
+- 같은 앱의 카카오맵 사용 설정과 무료 쿼터 적용 여부는 위 초기 설정 절차에 따라 확인한다.
+- 개발자 도구의 **Network → 실패한 SDK 요청 → Response**에서 서버 오류 본문을 확인한다. 본문이 보이지 않으면 **Headers**의 응답 상태·콘텐츠 유형 및 실제 요청의 출처 정보를 확인한다. 앱 키 값을 문서나 인계 기록에 복사하지 않는다.
+- 같은 키의 허용 도메인이나 활성화 설정만 바꾼 경우에는 먼저 페이지를 새로고침해 확인한다. GitHub 변수의 키 값을 바꾼 경우에는 새 빌드가 필요하므로 에이전트가 다시 배포한다.
+
+위 목록은 일반적인 진단 절차이며, 오류 문구만으로 어느 항목이 원인인지 확정할 수는 없다.
+
 근거: [지도 Web SDK 시작 안내](https://apis.map.kakao.com/web/guide/), [카카오맵 사용 방법](https://developers.kakao.com/docs/ko/kakaomap/common), [JavaScript 키와 도메인 설정](https://developers.kakao.com/docs/ko/app-setting/app#platform-key-javascript), [GitHub 저장소 변수 설정](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables).
