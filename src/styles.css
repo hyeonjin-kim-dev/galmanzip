@@ -66,8 +66,9 @@ textarea {
   display: flex;
   min-height: 0;
   flex-direction: column;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid #cdd1d5;
   background: #fff;
+  box-shadow: 1px 0 2px 0 #0000001a;
 }
 
 .sheet-handle {
