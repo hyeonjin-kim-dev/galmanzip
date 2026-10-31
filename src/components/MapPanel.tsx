@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
+import DestinationSearch from './DestinationSearch'
 
 const positions = ['collapsed', 'half', 'expanded'] as const
 type SheetPosition = (typeof positions)[number]
@@ -140,6 +141,7 @@ export default function MapPanel({ onHeightChange }: MapPanelProps) {
       >
         <span aria-hidden="true" />
       </button>
+      <DestinationSearch />
       <div id="panel-content" className="panel-content" hidden={position === 'collapsed'} />
     </aside>
   )

@@ -82,6 +82,42 @@ textarea {
   overscroll-behavior: contain;
 }
 
+.destination-search {
+  display: block;
+  flex-shrink: 0;
+  margin: 16px;
+}
+
+.destination-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  border: 1px solid #cdd1d5;
+  border-radius: 6px;
+  padding: 0 12px;
+  color: #464c53;
+  background: #fff;
+  box-shadow: 0 1px 2px 0 #0000001a;
+  font-size: 16px;
+  line-height: 1.5;
+  appearance: none;
+}
+
+.destination-input::placeholder {
+  color: #b1b8be;
+  opacity: 1;
+}
+
+.destination-input:hover {
+  border-color: #b1b8be;
+}
+
+.destination-input:focus {
+  border-color: #256ef4;
+  outline: none;
+}
+
 .map-canvas,
 .map-status {
   position: absolute;
@@ -162,6 +198,15 @@ textarea {
     padding-bottom: env(safe-area-inset-bottom, 0px);
     box-shadow: 0 -4px 24px rgb(0 0 0 / 10%);
     transition: height 180ms ease;
+  }
+
+  .destination-search {
+    position: fixed;
+    z-index: 3;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    right: calc(16px + env(safe-area-inset-right, 0px));
+    left: calc(16px + env(safe-area-inset-left, 0px));
+    margin: 0;
   }
 
   .map-page:has(.map-panel[data-dragging='true']) .map-viewport,
