@@ -83,15 +83,16 @@ textarea {
 }
 
 .destination-search {
-  display: block;
+  display: flex;
   flex-shrink: 0;
+  flex-direction: column;
+  gap: 8px;
   margin: 16px;
 }
 
-.destination-input {
+.destination-input,
+.travel-time-select {
   display: block;
-  width: 100%;
-  min-width: 0;
   height: 32px;
   border: 1px solid #cdd1d5;
   border-radius: 6px;
@@ -104,18 +105,47 @@ textarea {
   appearance: none;
 }
 
+.destination-input {
+  width: 100%;
+  min-width: 0;
+}
+
 .destination-input::placeholder {
   color: #b1b8be;
   opacity: 1;
 }
 
-.destination-input:hover {
+.destination-input:hover,
+.travel-time-select:hover {
   border-color: #b1b8be;
 }
 
-.destination-input:focus {
+.destination-input:focus,
+.travel-time-select:focus {
   border-color: #256ef4;
   outline: none;
+}
+
+.search-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.travel-time-select {
+  width: auto;
+  max-width: 100%;
+  flex: 0 0 auto;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.travel-time-select:has(> option[value='']:checked) {
+  color: #b1b8be;
+}
+
+.travel-time-select option {
+  color: #464c53;
 }
 
 .map-canvas,
