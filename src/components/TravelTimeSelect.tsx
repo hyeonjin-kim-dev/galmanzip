@@ -2,12 +2,12 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 
 const travelTimes = [
-  { minutes: 30, label: '약 30분' },
-  { minutes: 60, label: '약 1시간' },
-  { minutes: 90, label: '약 1시간 30분' },
-  { minutes: 120, label: '약 2시간' },
-  { minutes: 150, label: '약 2시간 30분' },
-  { minutes: 180, label: '약 3시간' },
+  { minutes: 30, label: '~ 약 30분' },
+  { minutes: 60, label: '~ 약 1시간' },
+  { minutes: 90, label: '~ 약 1시간 30분' },
+  { minutes: 120, label: '~ 약 2시간' },
+  { minutes: 150, label: '~ 약 2시간 30분' },
+  { minutes: 180, label: '~ 약 3시간' },
 ]
 
 export default function TravelTimeSelect() {
