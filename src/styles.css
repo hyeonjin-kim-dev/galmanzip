@@ -86,7 +86,7 @@ textarea {
   display: flex;
   flex-shrink: 0;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin: 16px;
 }
 
@@ -142,11 +142,11 @@ textarea {
 .travel-time-select {
   display: grid;
   width: 100%;
-  height: auto;
   grid-template-columns: max-content 16px;
   align-items: center;
   gap: 8px;
-  padding: 12px;
+  padding: 4px 8px;
+  line-height: 1.25;
   text-align: left;
   white-space: nowrap;
   cursor: pointer;
@@ -183,7 +183,7 @@ textarea {
   overscroll-behavior: contain;
   border: 1px solid #cdd1d5;
   border-radius: 6px;
-  padding: 0;
+  padding: 2px;
   color: #464c53;
   background: #fff;
   box-shadow: 0 4px 8px -1px #00000029;
@@ -199,6 +199,7 @@ textarea {
 
 .travel-time-option {
   border: 0;
+  border-radius: 0;
   padding: 4px 12px;
   white-space: nowrap;
   cursor: pointer;
