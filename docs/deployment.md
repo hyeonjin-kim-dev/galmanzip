@@ -23,4 +23,6 @@
 
 접속 주소는 [갈만집](https://hyeonjin-kim-dev.github.io/galmanzip/)이다. 사용자의 첫 화면 확인과 이후 변경의 배포 성공은 별도로 기록한다. 푸시했다는 사실만으로 새 변경의 게시 완료를 보고하지 않는다. 결과 조회가 제한되면 그 한계를 알린다.
 
+2026년 10월 31일 에이전트의 푸시로 시작된 [자동 배포](https://github.com/hyeonjin-kim-dev/galmanzip/actions/runs/41193079431)에서 빌드와 Pages 게시가 모두 성공한 것을 확인했다. 최초 설정 이후에는 사용자 수동 실행 없이 배포할 수 있음을 검증했다.
+
 근거: [GitHub Pages 게시 소스 설정](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site), [Vite의 GitHub Pages 배포 안내](https://vite.dev/guide/static-deploy.html#github-pages).
