@@ -42,9 +42,43 @@ textarea {
 .map-page {
   position: relative;
   isolation: isolate;
+  display: grid;
+  grid-template-columns: clamp(280px, 28vw, 360px) minmax(0, 1fr);
   width: 100%;
   height: 100vh;
   height: 100dvh;
+}
+
+.map-viewport {
+  position: relative;
+  isolation: isolate;
+  grid-column: 2;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.map-panel {
+  position: relative;
+  z-index: 2;
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  border-right: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.sheet-handle {
+  display: none;
+}
+
+.panel-content {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .map-canvas,
@@ -102,4 +136,73 @@ textarea {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .map-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .map-viewport {
+    grid-column: 1;
+    grid-row: 1;
+    height: calc(100% - var(--sheet-height));
+    transition: height 180ms ease;
+  }
+
+  .map-panel {
+    position: absolute;
+    inset: auto 0 0;
+    height: var(--sheet-height);
+    min-height: 72px;
+    max-height: calc(100% - 24px);
+    border: 0;
+    border-radius: 20px 20px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 24px rgb(0 0 0 / 10%);
+    transition: height 180ms ease;
+  }
+
+  .map-page:has(.map-panel[data-dragging='true']) .map-viewport,
+  .map-panel[data-dragging='true'] {
+    transition: none;
+  }
+
+  .sheet-handle {
+    display: flex;
+    width: 100%;
+    height: 44px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 20px 20px 0 0;
+    padding: 0;
+    background: transparent;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .sheet-handle:active {
+    cursor: grabbing;
+  }
+
+  .sheet-handle:focus-visible {
+    outline: 2px solid #173d32;
+    outline-offset: -4px;
+  }
+
+  .sheet-handle span {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: #d1d5db;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-panel,
+  .map-viewport {
+    transition: none;
+  }
 }
