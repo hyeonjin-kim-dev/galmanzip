@@ -28,4 +28,6 @@ Kakao 지도 Web SDK를 사용하려면 서비스 소유자의 카카오 앱과 
 
 화면 크기 대응이나 모의 SDK 검증과 실제 지도 표시 성공을 구분한다. JavaScript 키가 등록된 배포에서 Kakao SDK와 타일이 실제로 표시되는지 확인하기 전에는 지도 표시가 완료됐다고 보고하지 않는다.
 
+2026년 10월 31일 사용자가 외부 설정 등록을 완료했다고 알렸다. 이후 [지도 화면 자동 배포](https://github.com/hyeonjin-kim-dev/galmanzip/actions/runs/41197129729)에서 지도 키 존재 확인·타입 검사·빌드 및 Pages 게시가 모두 성공했다. 작업 환경의 네트워크 허용 목록에 배포 사이트와 Kakao 호스트가 포함되어 있지 않아 실제 지도 타일 표시를 직접 검증하지는 못했다. 배포 성공과 브라우저에서의 지도 표시 검증을 구분한다.
+
 근거: [지도 Web SDK 시작 안내](https://apis.map.kakao.com/web/guide/), [카카오맵 사용 방법](https://developers.kakao.com/docs/ko/kakaomap/common), [JavaScript 키와 도메인 설정](https://developers.kakao.com/docs/ko/app-setting/app#platform-key-javascript), [GitHub 저장소 변수 설정](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-variables).
