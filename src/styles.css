@@ -1,7 +1,7 @@
 :root {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #173d32;
-  background: #f7f8f5;
+  background: #e8ece8;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -11,39 +11,79 @@
   box-sizing: border-box;
 }
 
-body {
-  min-width: 280px;
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
   margin: 0;
 }
 
-main {
+body {
+  overflow: hidden;
+}
+
+.map-page {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.map-canvas,
+.map-status {
+  position: absolute;
+  inset: 0;
+}
+
+.map-status {
+  z-index: 1;
   display: flex;
-  min-height: 100svh;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 20px;
+  gap: 12px;
+  padding: 24px;
+  background: #f7f8f5;
   text-align: center;
   word-break: keep-all;
 }
 
-.service-name {
+.map-status p {
   margin: 0;
-  font-size: 16px;
-  letter-spacing: 0.08em;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
-h1 {
-  margin: 12px 0 20px;
-  font-size: clamp(48px, 12vw, 72px);
-  font-weight: 750;
-  letter-spacing: -0.06em;
-  line-height: 1.2;
-}
-
-.description {
-  margin: 0;
+.map-status span {
   color: #5c6b62;
-  font-size: 16px;
-  line-height: 1.7;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.map-status button {
+  margin-top: 8px;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 20px;
+  color: #fff;
+  background: #173d32;
+  font: inherit;
+  cursor: pointer;
+}
+
+.map-status button:focus-visible {
+  outline: 3px solid #519580;
+  outline-offset: 3px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    name: 초기 화면 빌드
+    name: 웹앱 빌드
     runs-on: ubuntu-latest
     steps:
       - name: 소스 가져오기
@@ -27,7 +27,14 @@ jobs:
       - name: 의존성 설치
         run: npm ci
       - name: 타입 검사와 빌드
-        run: npm run build
+        env:
+          VITE_KAKAO_MAP_KEY: ${{ vars.VITE_KAKAO_MAP_KEY }}
+        run: |
+          if [ -z "$VITE_KAKAO_MAP_KEY" ]; then
+            echo "::error::Kakao 지도 JavaScript 키를 저장소 변수 VITE_KAKAO_MAP_KEY에 등록해 주세요."
+            exit 1
+          fi
+          npm run build
       - name: 배포 파일 업로드
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
         with:
