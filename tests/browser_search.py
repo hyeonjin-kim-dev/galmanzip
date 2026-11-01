@@ -253,20 +253,22 @@ with sync_playwright() as p:
                line('적게걷는첫차', ['A', 'Y'], [300]), line('적게걷는둘째차', ['Y', 'C'], [500])],
         transfers=[dict(from_='B', to='E', seconds=240)])
     walking_network['transfers'][0]['from'] = walking_network['transfers'][0].pop('from_')
-    context, page, errors = prepare(browser, network=walking_network)
-    choose(page)
-    page.evaluate('window.__searchTest.homes = [window.__searchTest.homes[2]]')
-    page.get_by_role('button', name='검색', exact=True).click()
-    expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
-    expect(page.locator('.apartment-card')).to_have_count(1)
-    expect(page.locator('.apartment-time')).to_contain_text('환승 1회')
-    expect(page.locator('.results-summary')).to_contain_text('도보 합계 5분 이하')
-    page.locator('.route-details summary').click()
-    expect(page.locator('.route-details')).to_contain_text('적게걷는첫차')
-    expect(page.locator('.route-details')).to_contain_text('적게걷는둘째차')
-    assert not errors, errors
-    context.close()
-    print('도보 5분 제한을 지키는 대안 경로의 작업 스레드 계산·목록 표시 검증 통과')
+    for transfer_seconds, expected_line in [(240, '빠른'), (301, '적게걷는')]:
+        walking_network['transfers'][0]['seconds'] = transfer_seconds
+        context, page, errors = prepare(browser, network=walking_network)
+        choose(page)
+        page.evaluate('window.__searchTest.homes = [window.__searchTest.homes[2]]')
+        page.get_by_role('button', name='검색', exact=True).click()
+        expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
+        expect(page.locator('.apartment-card')).to_have_count(1)
+        expect(page.locator('.apartment-time')).to_contain_text('환승 1회')
+        expect(page.locator('.results-summary')).to_contain_text('각 도보 구간이 5분 이하')
+        page.locator('.route-details summary').click()
+        expect(page.locator('.route-details')).to_contain_text(f'{expected_line}첫차')
+        expect(page.locator('.route-details')).to_contain_text(f'{expected_line}둘째차')
+        assert not errors, errors
+        context.close()
+    print('도보 합계 5분 초과 허용·각 구간 5분 제한·대안 경로 목록 검증 통과')
 
     context, page, errors = prepare(browser)
     choose(page)

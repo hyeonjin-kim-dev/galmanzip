@@ -71,7 +71,7 @@ export async function searchApartments(destination: Place, minMinutes: number, m
   const places = new Map<string, ApartmentResult | null>()
   let completed = 0, total = zones.length, limited = false, lastEmission = 0, dirty = false
   let results: ApartmentResult[] = []
-  const notice = '도보 합계 5분 이하인 경로에서 환승 없는 경로를 우선합니다. 교통 자료로 추정한 결과이며 실제 운행은 외부 길찾기에서 확인해 주세요.'
+  const notice = '각 도보 구간이 5분 이하인 경로에서 환승 없는 경로를 우선합니다. 교통 자료로 추정한 결과이며 실제 운행은 외부 길찾기에서 확인해 주세요.'
   const emit = (status: SearchSnapshot['status'], message: string, force = false) => {
     if (!force && status === 'loading' && performance.now() - lastEmission < 250) return
     lastEmission = performance.now()

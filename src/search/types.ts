@@ -31,7 +31,6 @@ export interface RouteLeg {
 }
 export interface ReachableStop extends Stop {
   seconds: number
-  walkSeconds?: number
   boardings: number
   legs: RouteLeg[]
 }
