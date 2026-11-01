@@ -99,3 +99,18 @@
 - 확인한 경로 API들은 출발지·도착지 한 쌍의 경로를 반환한다. 무료·자체 계산 금지·서울경기 전체 아파트 자동 검색을 동시에 무제한 제공할 수 있는 API를 확인한 것은 아니다. 후보를 먼저 좁히거나 사용자가 선택한 단지의 경로를 조회하는 방식을 추천하되, 제품 범위 변경은 사용자 선택 후 반영한다.
 - 일반 카카오맵 경로 조회도 REST API 키가 필요하다. [키 설정 문서](https://developers.kakao.com/docs/ko/app-setting/app)는 REST 키의 호출 허용 IP와 JavaScript 키의 도메인 설정을 구분한다. 지도 키의 도메인 등록이 REST 키를 보호한다고 가정하지 않는다. 브라우저 직접 호출·CORS는 실제 앱에서 미검증이다.
 - 키를 브라우저에 포함하지 않는 대안으로 무료 서버리스 중계 함수를 검토할 수 있다. [Cloudflare Workers Free](https://developers.cloudflare.com/workers/platform/limits/)는 일 10만 요청 한도와 초과 시 오류를 안내한다. 이는 별도 서버를 직접 관리하지 않아도 되는 방식이지만, 기술적으로 백엔드를 추가하므로 사용자의 서버 미운영 원칙 변경 동의 없이 도입하지 않는다. 함수의 무료량은 카카오 API의 무료량과 별개다.
+
+## 호출 건수 제한 없는 오픈소스 방식 검토
+
+사용자는 무료 호출량이 많은 API를 넘어, 무료이고 호출 건수 제한이 없는 방식을 원하며 OpenTripPlanner 검토를 요청했다. 아래는 검토 결과이며 서버 도입에 동의하거나 OTP 채택을 확정한 상태는 아니다.
+
+- [OpenTripPlanner 공식 소개](https://www.opentripplanner.org/)는 OSM·GTFS로 경로를 찾는 서버 측 Java 엔진이라고 설명한다. [소스 라이선스](https://github.com/opentripplanner/OpenTripPlanner/blob/dev-2.x/LICENSE)는 LGPL 3 이상이다. 직접 호스팅하면 상용 제공자의 호출당 요금·일일 API 상품 쿼터에 의존하지 않지만, 처리량은 서버 성능과 운영 정책의 제약을 받는다. 공개된 무제한 무료 호스팅 서비스를 확인한 것은 아니다.
+- [기본 안내](https://docs.opentripplanner.org/en/latest/Basic-Tutorial/)에 따르면 GTFS와 OSM PBF를 준비하고 네트워크 그래프를 생성한 뒤 API 서버를 실행해야 한다. [시스템 요구사항](https://docs.opentripplanner.org/en/latest/System-Requirements/)은 지역·자료 규모에 따라 메모리 요구량이 크게 달라진다고 설명한다. 서울·경기 그래프의 실제 메모리·속도는 아직 측정하지 않았다. 특정 용량의 무료 서버에서 반드시 동작한다고 보장하지 않는다.
+- [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)는 정적 호스팅이므로 OTP 서버를 실행하는 용도로 사용할 수 없다. React 화면은 Pages에 유지하고, 별도로 실행한 OTP API에 연결하는 구성이 가능하다. 이 구성에는 백엔드가 생기므로 이전 서버 미운영 원칙의 변경이 필요하다.
+- 자체 알고리즘 구현과 검증된 엔진 사용은 구분한다. OTP를 사용하면 앱에서 독자 경로·보행 시간을 만드는 구현은 피할 수 있지만, 운영하는 OTP 서버에서는 경로 계산을 수행한다. 기존 자체 계산 금지를 이 방식으로 해석하는 데 사용자가 동의한 상태는 아니다.
+- 기존 KTDB 파일을 활용할 가능성은 있으나 전용 수단 코드·분석용 운행 달력을 표준 GTFS에 맞춰 검증해야 한다. OTP로 교체한다고 2025년 기준 자료가 최신 시간표가 되는 것은 아니다. 원본은 이미 수령했으므로 다시 신청·전달을 요구하지 않는다.
+- [OTP의 이동시간 분석 안내](https://docs.opentripplanner.org/en/latest/Analysis/)는 OTP 2에서 OTP 1의 등시간선·대량 분석 기능을 그대로 제공하지 않으며 이런 목적에는 R5 등을 검토하라고 설명한다. 오래된 OTP 1 예제를 근거로 OTP 2가 목적지 기준 도달 영역을 바로 반환한다고 안내하지 않는다.
+- [R5](https://github.com/conveyal/r5)는 MIT 라이선스의 오픈소스 엔진이며 일대다·다대다 이동시간 계산에 초점을 둔다. [R5py 이동시간 행렬 안내](https://r5py.readthedocs.io/stable/user-guide/user-manual/travel-time-matrices.html)는 다수 출발지·도착지를 다루는 사용법을 제공한다. 단, R5 자체는 안정된 외부 API를 보장하지 않아 버전 고정과 별도 연동이 필요하다. 유료 Conveyal 호스팅을 무료 서비스로 혼동하지 않는다.
+- 공개 운영용 무료 호스팅 후보로 [Oracle Always Free](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)를 검토했다. 확인 시점 문서는 A1 합계 2 OCPU·12GB, 합계 블록 저장소 200GB와 월 아웃바운드 10TB 등을 안내한다. 무료 리소스 확보 실패와 유휴 인스턴스 회수 가능성도 명시한다. 과거의 4 OCPU·24GB 안내를 현재 보장량으로 사용하지 않는다. 무료 리소스 밖 사용이나 유료 전환을 진행하지 않는다.
+
+권장 검증 순서는 기존 PC에서 작은 범위로 입력 자료 호환성과 OTP 성능을 확인한 뒤, 아파트 후보 묶음의 시간 검색에는 R5가 더 적합한지 비교하는 것이다. 공개 운영은 무료 서버 확보·실제 메모리·처리량 검증 후 결정한다. 이 과정은 API 쿼터 의존을 줄이지만 서버와 자료 갱신 관리를 없애 주지는 않는다.
