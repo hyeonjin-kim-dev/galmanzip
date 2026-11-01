@@ -23,6 +23,7 @@ export default function App() {
   const [destination, setDestination] = useState<Place | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [searchVersion, setSearchVersion] = useState(0)
+  const [searchMinutes, setSearchMinutes] = useState(20)
   const searchRef = useRef<AbortController | null>(null)
 
   useEffect(() => () => searchRef.current?.abort(), [])
@@ -41,7 +42,8 @@ export default function App() {
     setDestination(place)
     setSelectedId(null)
     setSearchVersion(version => version + 1)
-    const bounds = around(place)
+    setSearchMinutes(maxMinutes)
+    const bounds = around(place, maxMinutes)
     viewportRef.current = bounds
     dispatch({ type: 'begin', bounds })
     try {
@@ -74,7 +76,7 @@ export default function App() {
           onSort={() => dispatch({ type: 'sort' })} destination={destination} selectedId={selectedId} onSelect={setSelectedId} />
       </MapPanel>
       <section className="map-viewport" aria-label="지도 영역">
-        <KakaoMap results={view.results} allResults={snapshot.results} searchVersion={searchVersion} onViewport={onViewport} destination={destination} selectedId={selectedId}
+        <KakaoMap results={view.results} allResults={snapshot.results} searchVersion={searchVersion} maxMinutes={searchMinutes} onViewport={onViewport} destination={destination} selectedId={selectedId}
           onSelect={setSelectedId} />
       </section>
     </main>

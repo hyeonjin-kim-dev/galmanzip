@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { loadKakaoMaps } from '../lib/kakaoMaps'
 import type { MapCluster, MapInstance, MapMarker, MapsSdk } from '../lib/kakaoMaps'
 import type { Bounds } from '../search/bounds'
+import { destinationLevel } from '../search/bounds'
 import type { ApartmentResult, Place } from '../search/types'
 
 const appKey = import.meta.env.VITE_KAKAO_MAP_KEY?.trim()
@@ -14,11 +15,12 @@ interface KakaoMapProps {
   selectedId: string | null
   allResults: ApartmentResult[]
   searchVersion: number
+  maxMinutes: number
   onViewport(bounds: Bounds): void
   onSelect(id: string): void
 }
 
-export default function KakaoMap({ results, destination, selectedId, allResults, searchVersion, onViewport, onSelect }: KakaoMapProps) {
+export default function KakaoMap({ results, destination, selectedId, allResults, searchVersion, maxMinutes, onViewport, onSelect }: KakaoMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<MapStatus>(appKey ? 'loading' : 'missing-key')
   const [context, setContext] = useState<{ maps: MapsSdk; map: MapInstance } | null>(null)
@@ -143,11 +145,11 @@ export default function KakaoMap({ results, destination, selectedId, allResults,
 
   const focusDestination = () => {
     if (!context || !destination) return
-    context.map.setLevel(6)
+    context.map.setLevel(destinationLevel(maxMinutes))
     context.map.setCenter(new context.maps.LatLng(destination.lat, destination.lng))
     onViewport(readBounds(context.map))
   }
-  useLayoutEffect(() => { focusDestination() }, [context, destination, searchVersion, onViewport])
+  useLayoutEffect(() => { focusDestination() }, [context, destination, searchVersion, maxMinutes, onViewport])
 
   const selected = results.find(result => result.id === selectedId)
   useEffect(() => {
