@@ -47,6 +47,7 @@ with sync_playwright() as p:
         expect(page.get_by_role('button', name='중단', exact=True)).to_be_visible()
         expect(page.locator('.test-cluster')).to_have_text('1')
         page.locator('[data-place-id="near"] .apartment-heading').click()
+        page.wait_for_function('window.__searchTest.map.getCenter().getLng() === 127.155 && window.__searchTest.map.getLevel() === 4')
         page.locator('[data-place-id="near"] summary').click()
         expect(page.locator('[data-place-id="near"] .route-details')).to_have_attribute('open', '')
         expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
@@ -54,7 +55,9 @@ with sync_playwright() as p:
         assert first < total - 500
         expect(page.locator('.apartment-card')).to_have_count(1)
         assert page.evaluate('window.__searchTest.fitCount || 0') == 0
-        assert page.evaluate('window.__searchTest.map.getCenter().getLng()') == 127.16
+        assert page.evaluate('window.__searchTest.map.getCenter().getLng()') == 127.155
+        assert page.evaluate('window.__searchTest.map.getLevel()') == 4
+        page.get_by_role('button', name='목적지로', exact=True).click()
         before = page.evaluate('window.__searchTest.calls.length')
         for _ in range(4):
             page.get_by_role('button', name='지도 축소', exact=True).click()

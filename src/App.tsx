@@ -21,7 +21,9 @@ export default function App() {
     dispatch({ type: 'bounds', bounds })
   }, [])
   const [destination, setDestination] = useState<Place | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selection, setSelection] = useState<{ id: string } | null>(null)
+  const selectedId = selection?.id ?? null
+  const select = useCallback((id: string) => setSelection({ id }), [])
   const [searchVersion, setSearchVersion] = useState(0)
   const [searchMinutes, setSearchMinutes] = useState(20)
   const searchRef = useRef<AbortController | null>(null)
@@ -32,7 +34,7 @@ export default function App() {
     searchRef.current?.abort()
     dispatch({ type: 'reset' })
     setDestination(null)
-    setSelectedId(null)
+    setSelection(null)
   }
 
   const search = async (place: Place, minMinutes: number, maxMinutes: number) => {
@@ -40,7 +42,7 @@ export default function App() {
     const controller = new AbortController()
     searchRef.current = controller
     setDestination(place)
-    setSelectedId(null)
+    setSelection(null)
     setSearchVersion(version => version + 1)
     setSearchMinutes(maxMinutes)
     const bounds = around(place, maxMinutes)
@@ -73,11 +75,11 @@ export default function App() {
       <MapPanel onHeightChange={setSheetHeight} searchVersion={searchVersion}
         search={<DestinationSearch busy={snapshot.status === 'loading'} onSearch={search} onReset={reset} onCancel={cancel} />}>
         <ApartmentResults key={searchVersion} snapshot={snapshot} results={view.results} viewLoading={isViewLoading(view)}
-          onSort={() => dispatch({ type: 'sort' })} destination={destination} selectedId={selectedId} onSelect={setSelectedId} />
+          onSort={() => dispatch({ type: 'sort' })} destination={destination} selectedId={selectedId} onSelect={select} />
       </MapPanel>
       <section className="map-viewport" aria-label="지도 영역">
-        <KakaoMap results={view.results} allResults={snapshot.results} searchVersion={searchVersion} maxMinutes={searchMinutes} onViewport={onViewport} destination={destination} selectedId={selectedId}
-          onSelect={setSelectedId} />
+        <KakaoMap results={view.results} allResults={snapshot.results} searchVersion={searchVersion} maxMinutes={searchMinutes} onViewport={onViewport} destination={destination} selection={selection}
+          onSelect={select} />
       </section>
     </main>
   )

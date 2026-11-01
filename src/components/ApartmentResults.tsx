@@ -27,7 +27,9 @@ const ApartmentCard = memo(function ApartmentCard({ apartment, destination, sele
   const [copyMessage, setCopyMessage] = useState('')
   const routeUrl = `https://map.kakao.com/link/by/traffic/${encodeURIComponent(apartment.name)},${apartment.lat},${apartment.lng}/${encodeURIComponent(destination.name)},${destination.lat},${destination.lng}`
   return (
-    <li className="apartment-card" data-selected={selected} data-place-id={apartment.id}>
+    <li className="apartment-card" data-selected={selected} data-place-id={apartment.id} onClick={event => {
+      if (event.target instanceof Element && !event.target.closest('a, button, details')) onSelect(apartment.id)
+    }}>
       <button className="apartment-heading" type="button" aria-pressed={selected} onClick={() => onSelect(apartment.id)}>
         <strong>{apartment.name}</strong>
         <span className="apartment-time">약 {minutes(apartment.seconds)}분 <span>· 환승 {apartment.transfers}회</span></span>

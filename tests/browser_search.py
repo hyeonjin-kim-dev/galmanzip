@@ -40,9 +40,8 @@ with sync_playwright() as p:
         assert page.locator('.test-cluster').evaluate('(e) => getComputedStyle(e).color') == 'rgb(255, 255, 255)'
         assert page.evaluate('window.__searchTest.calls.some(call => call.page > 1)')
         assert page.evaluate('window.__searchTest.fitCount') == 1
-        center = page.evaluate('window.__searchTest.map.getCenter().getLng()')
         page.locator('[data-place-id="fast"] .apartment-heading').click()
-        assert page.evaluate('window.__searchTest.map.getCenter().getLng()') == center
+        page.wait_for_function('window.__searchTest.map.getCenter().getLng() === 127.1 && window.__searchTest.map.getLevel() === 4')
         page.locator('[data-place-id="fast"] summary').click()
         expect(page.locator('[data-place-id="fast"] .route-details')).to_contain_text('검증 출발역 → 검증 목적지역')
         assert page.locator('[data-place-id="fast"] a').first.get_attribute('href').startswith('https://map.kakao.com/link/by/traffic/')

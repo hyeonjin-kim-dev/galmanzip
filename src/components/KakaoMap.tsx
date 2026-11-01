@@ -12,7 +12,7 @@ type MapStatus = 'loading' | 'ready' | 'missing-key' | 'error'
 interface KakaoMapProps {
   results: ApartmentResult[]
   destination: Place | null
-  selectedId: string | null
+  selection: { id: string } | null
   allResults: ApartmentResult[]
   searchVersion: number
   maxMinutes: number
@@ -20,7 +20,7 @@ interface KakaoMapProps {
   onSelect(id: string): void
 }
 
-export default function KakaoMap({ results, destination, selectedId, allResults, searchVersion, maxMinutes, onViewport, onSelect }: KakaoMapProps) {
+export default function KakaoMap({ results, destination, selection, allResults, searchVersion, maxMinutes, onViewport, onSelect }: KakaoMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<MapStatus>(appKey ? 'loading' : 'missing-key')
   const [context, setContext] = useState<{ maps: MapsSdk; map: MapInstance } | null>(null)
@@ -151,7 +151,16 @@ export default function KakaoMap({ results, destination, selectedId, allResults,
   }
   useLayoutEffect(() => { focusDestination() }, [context, destination, searchVersion, maxMinutes, onViewport])
 
-  const selected = results.find(result => result.id === selectedId)
+  useEffect(() => {
+    if (!context || !selection) return
+    const apartment = allResults.find(result => result.id === selection.id)
+    if (!apartment) return
+    context.map.setLevel(Math.min(4, context.map.getLevel()))
+    context.map.panTo(new context.maps.LatLng(apartment.lat, apartment.lng))
+    // 결과 갱신과 구분해, 같은 항목을 다시 누른 경우에도 사용자 선택마다 이동한다.
+  }, [context, selection])
+
+  const selected = results.find(result => result.id === selection?.id)
   useEffect(() => {
     if (!context || !selected) return
     const content = document.createElement('span')
