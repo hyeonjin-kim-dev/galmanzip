@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { ACCESS_RADIUS, DESTINATION_RADIUS } from '../src/search/routing.ts'
 import { searchZones, splitZone } from '../src/search/zones.ts'
 import type { Bounds } from '../src/search/zones.ts'
 import type { Point, ReachableStop } from '../src/search/types.ts'
@@ -22,7 +23,7 @@ test('큰 조회 영역과 분할 영역이 격자 경계의 접근·하차 후 
   const stops = [stop('A', 37.43999, 127.11999), stop('B', 37.44001, 127.12001), stop('C', 37.36, 127.04)]
   const roots = searchZones(stops, destination, 30)
   const children = roots.flatMap(root => splitZone(root))
-  for (const [point, metres] of [...stops.map(point => [point, 599.9] as const), [destination, 999.9] as const]) {
+  for (const [point, metres] of [...stops.map(point => [point, ACCESS_RADIUS - 0.1] as const), [destination, DESTINATION_RADIUS - 0.1] as const]) {
     for (let bearing = 0; bearing < 360; bearing += 5) {
       const candidate = offset(point, metres, bearing)
       assert.ok(roots.some(root => contains(root, candidate)), `최초 영역: ${bearing}`)
@@ -43,7 +44,7 @@ test('같은 정류장의 느린 무환승과 빠른 환승을 합쳐도 시간 
   const transfer = { ...direct, seconds: 500, boardings: 2 }
   for (const values of [[direct, transfer], [transfer, direct]]) {
     const zones = searchZones(values, destination, 30)
-    assert.ok(zones.some(zone => contains(zone, offset(direct, 599, 90))))
+    assert.ok(zones.some(zone => contains(zone, offset(direct, ACCESS_RADIUS - 1, 90))))
   }
 })
 

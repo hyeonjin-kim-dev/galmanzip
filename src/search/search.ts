@@ -1,4 +1,4 @@
-import { indexStops, rankApartment, sortApartments } from './routing'
+import { sortApartments } from './routing'
 import { searchZones, splitZone } from './zones'
 import { inServiceArea, queryPlaces, toPlace } from './places'
 import type { ApartmentResult, Place, Reachability, SearchSnapshot } from './types'
@@ -9,12 +9,10 @@ let routingWorker: Worker | undefined
 let workerExpires = 0
 let workerTimer: number | undefined
 
-function reachability(destination: Place, minutes: number, signal: AbortSignal): Promise<Reachability> {
+type RoutingTask = { kind: 'reach' | 'rank'; destination: Place; minutes: number; places?: Place[]; minMinutes?: number }
+
+function routingTask<T>(task: RoutingTask, signal: AbortSignal): Promise<T> {
   signal.throwIfAborted()
-  const key = `${destination.lat},${destination.lng},${minutes}`
-  if (cached?.key === key && cached.expires > Date.now()) return Promise.resolve(cached.result)
-  cached = undefined
-  window.clearTimeout(cacheTimer)
   window.clearTimeout(workerTimer)
   return new Promise((resolve, reject) => {
     if (!routingWorker || workerExpires <= Date.now()) {
@@ -28,7 +26,7 @@ function reachability(destination: Place, minutes: number, signal: AbortSignal):
       if (routingWorker === worker) routingWorker = undefined
     }
     let done = false
-    const finish = (error?: Error, result?: Reachability) => {
+    const finish = (error?: Error, result?: T) => {
       if (done) return
       done = true
       worker.onmessage = worker.onerror = null
@@ -36,11 +34,7 @@ function reachability(destination: Place, minutes: number, signal: AbortSignal):
       signal.removeEventListener('abort', abort)
       if (error) { release(); reject(error) }
       else {
-        // 이어지는 조건 변경에는 교통망을 재사용하고, 유휴 상태에서는 메모리를 반환한다.
         workerTimer = window.setTimeout(release, 30000)
-        // 자체 계산 결과 하나만 메모리에 유지하며 외부 장소 API 응답은 재사용하지 않는다.
-        cached = { key, result: result!, expires: Date.now() + 2 * 3600000 }
-        cacheTimer = window.setTimeout(() => { cached = undefined }, 2 * 3600000)
         resolve(result!)
       }
     }
@@ -48,9 +42,22 @@ function reachability(destination: Place, minutes: number, signal: AbortSignal):
     const timer = window.setTimeout(() => finish(new Error('교통 자료 처리 시간이 초과되었습니다. 다시 시도해 주세요.')), 90000)
     signal.addEventListener('abort', abort, { once: true })
     worker.onmessage = event => finish(event.data.error ? new Error(event.data.error) : undefined, event.data.result)
-    worker.onerror = () => finish(new Error('후보 구역을 찾지 못했습니다. 페이지를 새로고침해 주세요.'))
-    worker.postMessage({ destination, minutes, url: new URL(`${import.meta.env.BASE_URL}data/transit.json`, location.href).href })
+    worker.onerror = () => finish(new Error('경로를 계산하지 못했습니다. 페이지를 새로고침해 주세요.'))
+    worker.postMessage({ ...task, url: new URL(`${import.meta.env.BASE_URL}data/transit.json`, location.href).href })
   })
+}
+
+async function reachability(destination: Place, minutes: number, signal: AbortSignal): Promise<Reachability> {
+  signal.throwIfAborted()
+  const key = `${destination.lat},${destination.lng},${minutes}`
+  if (cached?.key === key && cached.expires > Date.now()) return cached.result
+  cached = undefined
+  window.clearTimeout(cacheTimer)
+  const result = await routingTask<Reachability>({ kind: 'reach', destination, minutes }, signal)
+  // 자체 계산 결과만 보관하며 장소 API 응답은 반복 검색에 재사용하지 않는다.
+  cached = { key, result, expires: Date.now() + 2 * 3600000 }
+  cacheTimer = window.setTimeout(() => { cached = undefined }, 2 * 3600000)
+  return result
 }
 
 export async function searchApartments(destination: Place, minMinutes: number, maxMinutes: number, signal: AbortSignal,
@@ -61,11 +68,10 @@ export async function searchApartments(destination: Place, minMinutes: number, m
   if (!graph.stops.length) throw new Error('목적지 주변에서 자료에 포함된 정류장을 찾지 못했습니다.')
   const zones = searchZones(graph.stops, destination, maxMinutes)
   const pending = [...zones].reverse()
-  const nearbyStops = indexStops(graph.stops)
   const places = new Map<string, ApartmentResult | null>()
   let completed = 0, total = zones.length, limited = false, lastEmission = 0, dirty = false
   let results: ApartmentResult[] = []
-  const notice = '교통 자료로 추정한 결과입니다. 환승 없는 경로를 우선하며 실제 운행은 외부 길찾기에서 확인해 주세요.'
+  const notice = '도보 합계 5분 이하인 경로에서 환승 없는 경로를 우선합니다. 교통 자료로 추정한 결과이며 실제 운행은 외부 길찾기에서 확인해 주세요.'
   const emit = (status: SearchSnapshot['status'], message: string, force = false) => {
     if (!force && status === 'loading' && performance.now() - lastEmission < 250) return
     lastEmission = performance.now()
@@ -97,13 +103,22 @@ export async function searchApartments(destination: Place, minMinutes: number, m
         const response = await queryPlaces('아파트', signal, zone, page)
         signal.throwIfAborted()
         received += response.data.length
+        const batch: Place[] = []
         for (const data of response.data) {
           if (!/아파트\s*$/.test(data.category_name) || !inServiceArea(data.address_name) || places.has(data.id)) continue
           const place = toPlace(data)
           if (!place) continue
-          const result = rankApartment(place, destination, nearbyStops(place), maxMinutes, minMinutes)
-          places.set(place.id, result)
-          if (result) dirty = true
+          places.set(place.id, null)
+          batch.push(place)
+        }
+        if (batch.length) {
+          const ranked = await routingTask<(ApartmentResult | null)[]>({ kind: 'rank', destination, minutes: maxMinutes, minMinutes, places: batch }, signal)
+          signal.throwIfAborted()
+          batch.forEach((place, index) => {
+            const result = ranked[index]
+            places.set(place.id, result)
+            if (result) dirty = true
+          })
         }
         emit('loading', loading, dirty && results.length === 0)
         // 총건수가 노출 한도에 잘릴 수도 있으므로 한도에 도달한 지역부터 세분화한다.

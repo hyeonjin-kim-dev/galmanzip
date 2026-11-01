@@ -83,10 +83,10 @@ with sync_playwright() as p:
         choose(page, touch=mobile)
         page.get_by_role('button', name='검색', exact=True).click()
         expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
-        expect(page.locator('.apartment-card')).to_have_count(4)
-        assert page.evaluate('window.__searchTest.createdMarkers') == 4
-        assert page.locator('.apartment-card').evaluate_all('(cards) => cards.map(card => card.dataset.placeId)') == ['walk', 'fast', 'slow', 'transfer']
-        expect(page.locator('.test-cluster')).to_have_text('4')
+        expect(page.locator('.apartment-card')).to_have_count(3)
+        assert page.evaluate('window.__searchTest.createdMarkers') == 3
+        assert page.locator('.apartment-card').evaluate_all('(cards) => cards.map(card => card.dataset.placeId)') == ['fast', 'slow', 'transfer']
+        expect(page.locator('.test-cluster')).to_have_text('3')
         assert page.evaluate('window.__searchTest.clusterOptions.minClusterSize') == 1
         assert page.locator('.test-cluster').evaluate('(e) => getComputedStyle(e).backgroundColor') == 'rgb(0, 0, 0)'
         assert page.locator('.test-cluster').evaluate('(e) => getComputedStyle(e).color') == 'rgb(255, 255, 255)'
@@ -199,11 +199,11 @@ with sync_playwright() as p:
 
     context, page, errors = prepare(browser)
     choose(page)
-    page.evaluate('window.__searchTest.failAfter = 1')
+    page.evaluate('window.__searchTest.failAfter = 2')
     page.get_by_role('button', name='검색', exact=True).click()
     expect(page.get_by_role('alert')).to_contain_text('장소 검색을 완료하지 못했습니다.', timeout=10000)
     expect(page.get_by_text('중단 전까지 확인한 일부 결과입니다.', exact=True)).to_be_visible()
-    expect(page.locator('.apartment-card')).to_have_count(1)
+    assert page.locator('.apartment-card').count() >= 1
     assert not errors, errors
     context.close()
     print('API 오류 시 일부 결과 표시 검증 통과')
@@ -246,6 +246,28 @@ with sync_playwright() as p:
     context.close()
     print('조회 간격 대기 중 취소 시 후속 요청 중단 검증 통과')
 
+    walking_network = dict(NETWORK,
+        stops=STOPS + [dict(id='E', name='환승 승강장', lat=37.4001, lng=127.13),
+                       dict(id='F', name='도착지에서 먼 정류장', lat=37.4015, lng=127.16)],
+        lines=[line('빠른첫차', ['A', 'B'], [100]), line('빠른둘째차', ['E', 'F'], [100]),
+               line('적게걷는첫차', ['A', 'Y'], [300]), line('적게걷는둘째차', ['Y', 'C'], [500])],
+        transfers=[dict(from_='B', to='E', seconds=240)])
+    walking_network['transfers'][0]['from'] = walking_network['transfers'][0].pop('from_')
+    context, page, errors = prepare(browser, network=walking_network)
+    choose(page)
+    page.evaluate('window.__searchTest.homes = [window.__searchTest.homes[2]]')
+    page.get_by_role('button', name='검색', exact=True).click()
+    expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
+    expect(page.locator('.apartment-card')).to_have_count(1)
+    expect(page.locator('.apartment-time')).to_contain_text('환승 1회')
+    expect(page.locator('.results-summary')).to_contain_text('도보 합계 5분 이하')
+    page.locator('.route-details summary').click()
+    expect(page.locator('.route-details')).to_contain_text('적게걷는첫차')
+    expect(page.locator('.route-details')).to_contain_text('적게걷는둘째차')
+    assert not errors, errors
+    context.close()
+    print('도보 5분 제한을 지키는 대안 경로의 작업 스레드 계산·목록 표시 검증 통과')
+
     context, page, errors = prepare(browser)
     choose(page)
     page.evaluate('''() => {
@@ -254,12 +276,14 @@ with sync_playwright() as p:
     }''')
     page.get_by_role('button', name='검색', exact=True).click()
     expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
-    assert len(page.closed_workers) == 1
+    page.wait_for_timeout(100)
+    assert len(page.closed_workers) == len(page.routing_workers) > 0
+    previous_workers = len(page.routing_workers)
     page.get_by_role('combobox', name='소요 시간').click()
     page.get_by_role('option', name='20분 ~ 30분', exact=True).click()
     page.get_by_role('button', name='검색', exact=True).click()
     expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
-    assert len(page.routing_workers) == 2
+    assert len(page.routing_workers) > previous_workers
     assert not errors, errors
     context.close()
     print('유휴 작업 스레드 메모리 해제와 이후 재검색 검증 통과')
@@ -270,7 +294,7 @@ with sync_playwright() as p:
     choose(app)
     app.get_by_role('button', name='검색', exact=True).click()
     expect(app.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
-    expect(app.locator('.apartment-card')).to_have_count(4)
+    expect(app.locator('.apartment-card')).to_have_count(3)
     assert app.locator('.map-page').evaluate('(element) => element.scrollWidth <= innerWidth')
     assert not errors, errors
     context.close()

@@ -86,7 +86,7 @@ export default function ApartmentResults({ snapshot, destination, selectedId, on
         {snapshot.limited && <p>장소 검색 제공 한도로 일부 아파트가 누락될 수 있습니다.</p>}
         {snapshot.source && <details className="results-notice">
           <summary>조회 기준과 주의사항</summary>
-          <p>선택한 최대 시간 내에서 환승 없는 경로를 우선합니다. 아파트 후보 구역은 교통 자료의 예상 도달 범위이므로 자료에 없는 노선 주변 아파트가 누락될 수 있습니다.</p>
+          <p>출발·환승·도착의 도보 합계가 5분 이하이고 선택한 최대 시간 내인 경로에서 환승 없는 경로를 우선합니다. 자료에 없는 노선 주변 아파트는 누락될 수 있습니다.</p>
           <p>도보·대기·탑승·환승을 합한 추정 시간입니다. 운행일·시간대, 교통 상황과 실제 보행 경로에 따라 달라집니다. 10분 이상 여유를 두고 카카오맵 길찾기에서 확인해 주세요. 오차가 10분 이내임을 보장하지 않습니다.</p>
           <p>아파트 위치 정보이며 현재 매물이나 실거래 가격이 아닙니다. 네이버 부동산에서 복사한 단지명으로 매매·전세·월세를 확인하세요. 장소 검색에 등록되지 않은 아파트는 제외됩니다.</p>
           <p>경로·후보 구역 자료: <a href={snapshot.source.url} target="_blank" rel="noopener noreferrer">{snapshot.source.name}</a> · {snapshot.source.date}</p>
