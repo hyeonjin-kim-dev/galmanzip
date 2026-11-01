@@ -2,7 +2,6 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { inServiceArea, queryPlaces, toPlace } from '../search/places'
 import type { Place } from '../search/types'
-import { TRANSIT_SEARCH_READY } from '../search/search'
 import TravelTimeSelect from './TravelTimeSelect'
 
 interface DestinationSearchProps {
@@ -62,7 +61,7 @@ export default function DestinationSearch({ busy, onSearch, onReset, onCancel }:
   }
 
   const submit = () => {
-    if (TRANSIT_SEARCH_READY && destination && minutes !== null && !busy) onSearch(destination, minutes - 10, minutes)
+    if (destination && minutes !== null && !busy) onSearch(destination, minutes - 10, minutes)
   }
 
   const handleKey = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -123,7 +122,7 @@ export default function DestinationSearch({ busy, onSearch, onReset, onCancel }:
         <TravelTimeSelect label="소요 시간" value={minutes} onChange={value => { setMinutes(value); onReset() }} />
         {busy
           ? <button className="search-button" type="button" onClick={event => { event.preventDefault(); onCancel() }}>중단</button>
-          : <button className="search-button" type="button" disabled={!TRANSIT_SEARCH_READY || !destination || minutes === null} onClick={submit}>검색</button>}
+          : <button className="search-button" type="button" disabled={!destination || minutes === null} onClick={submit}>검색</button>}
       </div>
     </div>
   )

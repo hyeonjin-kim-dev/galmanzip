@@ -33,7 +33,7 @@ export default function App() {
     setDestination(place)
     setSelectedId(null)
     setSearchVersion(version => version + 1)
-    setSnapshot({ ...emptySearch, status: 'loading', message: '카카오 대중교통 경로를 조회하고 있습니다.' })
+    setSnapshot({ ...emptySearch, status: 'loading', message: '아파트 후보 구역을 찾고 있습니다.' })
     try {
       await searchApartments(place, minMinutes, maxMinutes, controller.signal, next => {
         if (!controller.signal.aborted) setSnapshot(next)

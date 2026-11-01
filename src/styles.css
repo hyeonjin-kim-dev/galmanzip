@@ -477,3 +477,5 @@ summary { cursor: pointer; }
     transition: none;
   }
 }
+
+.apartment-provider { margin: 4px 0; color: #6d747b; font-size: 12px; }
