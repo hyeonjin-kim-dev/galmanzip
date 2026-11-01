@@ -10,12 +10,16 @@ const travelTimes = [
   { minutes: 180, label: '~ 약 3시간' },
 ]
 
-export default function TravelTimeSelect() {
+interface TravelTimeSelectProps {
+  value: number | null
+  onChange(minutes: number): void
+}
+
+export default function TravelTimeSelect({ value: minutes, onChange }: TravelTimeSelectProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
   const listId = useId()
-  const [minutes, setMinutes] = useState<number | null>(null)
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [keyboardNavigation, setKeyboardNavigation] = useState(false)
@@ -29,7 +33,7 @@ export default function TravelTimeSelect() {
   }
 
   const selectOption = (index: number) => {
-    setMinutes(travelTimes[index].minutes)
+    onChange(travelTimes[index].minutes)
     setOpen(false)
     triggerRef.current?.focus()
   }

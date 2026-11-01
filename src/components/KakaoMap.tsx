@@ -1,13 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadKakaoMaps } from '../lib/kakaoMaps'
+import type { MapCluster, MapInstance, MapMarker, MapsSdk } from '../lib/kakaoMaps'
+import type { ApartmentResult, Place } from '../search/types'
 
 const appKey = import.meta.env.VITE_KAKAO_MAP_KEY?.trim()
 
 type MapStatus = 'loading' | 'ready' | 'missing-key' | 'error'
 
-export default function KakaoMap() {
+interface KakaoMapProps {
+  results: ApartmentResult[]
+  destination: Place | null
+  selectedId: string | null
+  fitResults: boolean
+  onSelect(id: string): void
+}
+
+export default function KakaoMap({ results, destination, selectedId, fitResults, onSelect }: KakaoMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<MapStatus>(appKey ? 'loading' : 'missing-key')
+  const [context, setContext] = useState<{ maps: MapsSdk; map: MapInstance } | null>(null)
+  const clustererRef = useRef<InstanceType<MapsSdk['MarkerClusterer']> | null>(null)
+  const markerIdsRef = useRef(new Map<MapMarker, string>())
+  const fittedRef = useRef(false)
 
   useEffect(() => {
     const container = containerRef.current
@@ -36,6 +50,7 @@ export default function KakaoMap() {
           map.setCenter(center)
         })
         observer.observe(container)
+        setContext({ maps, map })
         setStatus('ready')
       })
       .catch(() => {
@@ -50,6 +65,76 @@ export default function KakaoMap() {
       container.replaceChildren()
     }
   }, [])
+
+  useEffect(() => {
+    if (!context) return
+    const { maps, map } = context
+    const clusterer = new maps.MarkerClusterer({ map, gridSize: 64, averageCenter: true,
+      minLevel: 0, minClusterSize: 1, disableClickZoom: true, texts: size => String(size),
+      calculator: [Number.MAX_SAFE_INTEGER],
+      styles: [{ width: '44px', height: '44px', background: '#000000', color: '#ffffff',
+        borderRadius: '50%', textAlign: 'center', lineHeight: '44px', fontSize: '16px',
+        fontWeight: '600', cursor: 'pointer' }] })
+    clustererRef.current = clusterer
+    const click = (cluster: MapCluster) => {
+      const markers = cluster.getMarkers()
+      if (markers.length === 1) {
+        const id = markerIdsRef.current.get(markers[0])
+        if (id) onSelect(id)
+      } else map.setBounds(cluster.getBounds(), 80, 40, 40, 40)
+    }
+    maps.event.addListener(clusterer, 'clusterclick', click)
+    return () => {
+      maps.event.removeListener(clusterer, 'clusterclick', click)
+      clusterer.clear()
+      clustererRef.current = null
+      markerIdsRef.current.clear()
+    }
+  }, [context, onSelect])
+
+  useEffect(() => {
+    fittedRef.current = false
+    if (!context || !destination) return
+    const { maps, map } = context
+    const position = new maps.LatLng(destination.lat, destination.lng)
+    const content = document.createElement('span')
+    content.className = 'destination-marker'
+    content.textContent = '목적지'
+    content.title = destination.name
+    const overlay = new maps.CustomOverlay({ position, content, yAnchor: 1.5, zIndex: 2 })
+    overlay.setMap(map)
+    map.panTo(position)
+    return () => overlay.setMap(null)
+  }, [context, destination])
+
+  useEffect(() => {
+    const clusterer = clustererRef.current
+    if (!context || !clusterer) return
+    const { maps, map } = context
+    clusterer.clear()
+    markerIdsRef.current.clear()
+    const bounds = new maps.LatLngBounds()
+    const markers = results.map(result => {
+      const position = new maps.LatLng(result.lat, result.lng)
+      bounds.extend(position)
+      const marker = new maps.Marker({ position, title: result.name })
+      markerIdsRef.current.set(marker, result.id)
+      return marker
+    })
+    clusterer.addMarkers(markers)
+    if (results.length && (!fittedRef.current || fitResults)) {
+      if (destination) bounds.extend(new maps.LatLng(destination.lat, destination.lng))
+      map.setBounds(bounds, 110, 48, 48, 48)
+      fittedRef.current = true
+    }
+  }, [context, results, destination, fitResults])
+
+  const selected = results.find(result => result.id === selectedId)
+  useEffect(() => {
+    if (!context || !selected) return
+    context.map.setLevel(4)
+    context.map.panTo(new context.maps.LatLng(selected.lat, selected.lng))
+  }, [context, selected?.id, selected?.lat, selected?.lng])
 
   return (
     <>

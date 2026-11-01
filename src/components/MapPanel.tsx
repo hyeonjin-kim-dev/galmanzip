@@ -1,25 +1,33 @@
-import { useLayoutEffect, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent } from 'react'
-import DestinationSearch from './DestinationSearch'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
 
 const positions = ['collapsed', 'half', 'expanded'] as const
 type SheetPosition = (typeof positions)[number]
 
 interface MapPanelProps {
   onHeightChange(height: string): void
+  search: ReactNode
+  children: ReactNode
+  searchVersion: number
 }
 
-export default function MapPanel({ onHeightChange }: MapPanelProps) {
+export default function MapPanel({ onHeightChange, search, children, searchVersion }: MapPanelProps) {
   const panelRef = useRef<HTMLElement>(null)
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null)
   const suppressClickRef = useRef(false)
   const [position, setPosition] = useState<SheetPosition>('half')
   const [dragHeight, setDragHeight] = useState<number | null>(null)
 
+  useEffect(() => {
+    if (searchVersion) setPosition(current => current === 'collapsed' ? 'half' : current)
+  }, [searchVersion])
+
   const getHeights = () => {
     const viewportHeight =
       panelRef.current?.parentElement?.clientHeight ?? window.innerHeight
-    return [72, viewportHeight * 0.42, viewportHeight * 0.88]
+    const maxHeight = panelRef.current ? parseFloat(getComputedStyle(panelRef.current).maxHeight) : NaN
+    const upper = Number.isFinite(maxHeight) ? Math.min(maxHeight, viewportHeight * 0.88) : viewportHeight * 0.88
+    return [72, Math.min(viewportHeight * 0.42, upper), upper]
   }
 
   const startDrag = (event: PointerEvent<HTMLButtonElement>) => {
@@ -141,8 +149,8 @@ export default function MapPanel({ onHeightChange }: MapPanelProps) {
       >
         <span aria-hidden="true" />
       </button>
-      <DestinationSearch />
-      <div id="panel-content" className="panel-content" hidden={position === 'collapsed'} />
+      {search}
+      <div id="panel-content" className="panel-content" hidden={position === 'collapsed'}>{children}</div>
     </aside>
   )
 }

@@ -26,6 +26,8 @@ jobs:
           cache: npm
       - name: 의존성 설치
         run: npm ci
+      - name: 경로 계산 검증
+        run: npm test
       - name: 타입 검사와 빌드
         env:
           VITE_KAKAO_MAP_KEY: ${{ vars.VITE_KAKAO_MAP_KEY }}
