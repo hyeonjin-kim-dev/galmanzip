@@ -3,6 +3,9 @@ import type { ApartmentResult, Place, RouteLeg, SearchSnapshot } from '../search
 
 interface ApartmentResultsProps {
   snapshot: SearchSnapshot
+  results: ApartmentResult[]
+  viewLoading: boolean
+  onSort(): void
   destination: Place | null
   selectedId: string | null
   onSelect(id: string): void
@@ -54,50 +57,62 @@ const ApartmentCard = memo(function ApartmentCard({ apartment, destination, sele
   )
 })
 
-export default function ApartmentResults({ snapshot, destination, selectedId, onSelect }: ApartmentResultsProps) {
+export default function ApartmentResults({ snapshot, results, viewLoading, onSort, destination, selectedId, onSelect }: ApartmentResultsProps) {
   const [visibleCount, setVisibleCount] = useState(50)
   const listRef = useRef<HTMLOListElement>(null)
-  const selectedIndex = snapshot.results.findIndex(result => result.id === selectedId)
+  const selectedIndex = results.findIndex(result => result.id === selectedId)
   const shown = Math.max(visibleCount, selectedIndex + 1)
 
   useEffect(() => {
     if (selectedIndex >= 0) listRef.current?.children[selectedIndex]?.scrollIntoView({ block: 'nearest' })
-  }, [selectedId, selectedIndex])
+  }, [selectedId])
 
   if (snapshot.status === 'idle') return <div className="results-empty">
     <p>어디까지 갈 수 있는 집일까요?</p>
     <span>목적지를 목록에서 선택하고 소요 시간을 정해 주세요.</span>
   </div>
 
+  const outsideCount = snapshot.results.length - results.length
+  const interrupted = snapshot.status === 'error' || snapshot.status === 'cancelled'
+  const message = snapshot.status !== 'loading' ? snapshot.message : viewLoading
+    ? results.length ? '새로운 집을 찾으면 아래에 추가해요.' : '지도 주변의 집을 찾고 있어요.'
+    : '다른 지역의 집도 확인 중이에요.'
+
   return (
-    <section className="apartment-results" aria-label="아파트 검색 결과" aria-busy={snapshot.status === 'loading'}>
+    <section className="apartment-results" aria-label="아파트 검색 결과" aria-busy={viewLoading && !results.length}>
       <div className="results-summary">
-        <h2>{snapshot.results.length || snapshot.status === 'complete' ? `아파트 ${snapshot.results.length.toLocaleString('ko-KR')}곳` : '아파트 검색'}</h2>
-        <p>환승 없는 경로 우선 · 소요시간순</p>
-        {snapshot.source && <p className="results-basis">교통 자료: {snapshot.source.date}{snapshot.source.reference && <> · {snapshot.source.reference}</>}</p>}
-        <p className="search-message" role={snapshot.status === 'error' ? 'alert' : 'status'}>{snapshot.message}</p>
-        {snapshot.status === 'loading' && snapshot.total > 0 && <>
-          <progress aria-label="주변 아파트 조회 진행률" value={snapshot.completed} max={snapshot.total} />
-          <span className="search-progress">{snapshot.completed} / {snapshot.total}개 지역 확인</span>
-        </>}
-        {snapshot.status === 'complete' && !snapshot.results.length && <p>선택한 시간 안에 도착할 것으로 예상되는 아파트를 찾지 못했습니다.</p>}
-        {(snapshot.status === 'cancelled' || (snapshot.status === 'error' && snapshot.results.length > 0)) && <p>중단 전까지 확인한 일부 결과입니다.</p>}
-        {snapshot.notice && <p>{snapshot.notice}</p>}
-        {snapshot.limited && <p>장소 검색 제공 한도로 일부 아파트가 누락될 수 있습니다.</p>}
-        {snapshot.source && <details className="results-notice">
+        <h2>지도 안 아파트 {results.length.toLocaleString('ko-KR')}곳</h2>
+        <p>각 도보 구간이 5분 이하 · 직통 경로 우선</p>
+        <p className="search-message" role={snapshot.status === 'error' ? 'alert' : 'status'} title={message}>{message}</p>
+        <div className="results-actions">
+          <span>새 결과는 아래에 추가됩니다</span>
+          <button type="button" onClick={onSort} disabled={results.length < 2}>무환승·시간순 정렬</button>
+        </div>
+        <details className="results-notice">
           <summary>조회 기준과 주의사항</summary>
+          {snapshot.source && <p className="results-basis">교통 자료: {snapshot.source.date}{snapshot.source.reference && <> · {snapshot.source.reference}</>}</p>}
+          {snapshot.notice && <p>{snapshot.notice}</p>}
           <p>출발·각 환승·도착의 도보 구간이 각각 5분 이하이고 선택한 최대 시간 내인 경로에서 환승 없는 경로를 우선합니다. 자료에 없는 노선 주변 아파트는 누락될 수 있습니다.</p>
           <p>도보·대기·탑승·환승을 합한 추정 시간입니다. 운행일·시간대, 교통 상황과 실제 보행 경로에 따라 달라집니다. 10분 이상 여유를 두고 카카오맵 길찾기에서 확인해 주세요. 오차가 10분 이내임을 보장하지 않습니다.</p>
           <p>아파트 위치 정보이며 현재 매물이나 실거래 가격이 아닙니다. 네이버 부동산에서 복사한 단지명으로 매매·전세·월세를 확인하세요. 장소 검색에 등록되지 않은 아파트는 제외됩니다.</p>
-          <p>경로·후보 구역 자료: <a href={snapshot.source.url} target="_blank" rel="noopener noreferrer">{snapshot.source.name}</a> · {snapshot.source.date}</p>
-          <p>{snapshot.coverage}</p><p>{snapshot.source.license}</p>
-        </details>}
+          {snapshot.source && <>
+            <p>경로·후보 구역 자료: <a href={snapshot.source.url} target="_blank" rel="noopener noreferrer">{snapshot.source.name}</a> · {snapshot.source.date}</p>
+            <p>{snapshot.coverage}</p><p>{snapshot.source.license}</p>
+          </>}
+          {snapshot.limited && <p>장소 검색 제공 한도로 일부 아파트가 누락될 수 있습니다.</p>}
+        </details>
       </div>
+      {(snapshot.status === 'cancelled' || (snapshot.status === 'error' && snapshot.results.length > 0)) && <p className="results-partial">중단 전까지 확인한 일부 결과입니다.</p>}
+      {!results.length && (viewLoading ? <div className="results-skeleton" aria-hidden="true">
+        {[0, 1, 2].map(index => <div key={index}><span /><span /><span /></div>)}
+      </div> : <div className="results-empty"><p>{interrupted ? '이 지도 영역에서 아직 확인한 결과가 없어요.' : '이 지도 영역에는 조건에 맞는 집이 없어요.'}</p>
+        <span>{outsideCount ? `지도 밖에서 찾은 집 ${outsideCount.toLocaleString('ko-KR')}곳은 지도를 축소하면 볼 수 있어요.` : interrupted ? '다시 검색해서 이 영역의 집을 확인해 주세요.' : '지도를 움직이거나 축소해서 다른 지역도 확인해 보세요.'}</span>
+      </div>)}
       {destination && <ol className="apartment-list" ref={listRef}>
-        {snapshot.results.slice(0, shown).map(apartment => <ApartmentCard key={apartment.id} apartment={apartment}
+        {results.slice(0, shown).map(apartment => <ApartmentCard key={apartment.id} apartment={apartment}
           destination={destination} selected={selectedId === apartment.id} onSelect={onSelect} />)}
       </ol>}
-      {shown < snapshot.results.length && <button className="results-more" type="button" onClick={() => setVisibleCount(shown + 50)}>아파트 더 보기</button>}
+      {shown < results.length && <button className="results-more" type="button" onClick={() => setVisibleCount(shown + 50)}>아파트 더 보기</button>}
     </section>
   )
 }

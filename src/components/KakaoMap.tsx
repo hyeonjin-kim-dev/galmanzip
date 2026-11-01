@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { loadKakaoMaps } from '../lib/kakaoMaps'
 import type { MapCluster, MapInstance, MapMarker, MapsSdk } from '../lib/kakaoMaps'
+import type { Bounds } from '../search/bounds'
 import type { ApartmentResult, Place } from '../search/types'
 
 const appKey = import.meta.env.VITE_KAKAO_MAP_KEY?.trim()
@@ -11,18 +12,19 @@ interface KakaoMapProps {
   results: ApartmentResult[]
   destination: Place | null
   selectedId: string | null
-  fitResults: boolean
+  allResults: ApartmentResult[]
+  searchVersion: number
+  onViewport(bounds: Bounds): void
   onSelect(id: string): void
 }
 
-export default function KakaoMap({ results, destination, selectedId, fitResults, onSelect }: KakaoMapProps) {
+export default function KakaoMap({ results, destination, selectedId, allResults, searchVersion, onViewport, onSelect }: KakaoMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<MapStatus>(appKey ? 'loading' : 'missing-key')
   const [context, setContext] = useState<{ maps: MapsSdk; map: MapInstance } | null>(null)
   const clustererRef = useRef<InstanceType<MapsSdk['MarkerClusterer']> | null>(null)
   const markerIdsRef = useRef(new Map<MapMarker, string>())
   const markersRef = useRef(new Map<string, MapMarker>())
-  const fittedRef = useRef(false)
 
   useEffect(() => {
     const container = containerRef.current
@@ -33,6 +35,7 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
 
     let active = true
     let observer: ResizeObserver | undefined
+    let stopListening: (() => void) | undefined
 
     loadKakaoMaps(appKey)
       .then((maps) => {
@@ -45,10 +48,15 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
           level: 8,
         })
 
+        let timer: number | undefined
+        const changed = () => { window.clearTimeout(timer); timer = window.setTimeout(() => onViewport(readBounds(map)), 100) }
+        maps.event.addListener(map, 'idle', changed)
+        stopListening = () => { window.clearTimeout(timer); maps.event.removeListener(map, 'idle', changed) }
         observer = new ResizeObserver(() => {
           const center = map.getCenter()
           map.relayout()
           map.setCenter(center)
+          changed()
         })
         observer.observe(container)
         setContext({ maps, map })
@@ -63,9 +71,10 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
     return () => {
       active = false
       observer?.disconnect()
+      stopListening?.()
       container.replaceChildren()
     }
-  }, [])
+  }, [onViewport])
 
   useEffect(() => {
     if (!context) return
@@ -95,7 +104,6 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
   }, [context, onSelect])
 
   useEffect(() => {
-    fittedRef.current = false
     if (!context || !destination) return
     const { maps, map } = context
     const position = new maps.LatLng(destination.lat, destination.lng)
@@ -105,7 +113,6 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
     content.title = destination.name
     const overlay = new maps.CustomOverlay({ position, content, yAnchor: 1.5, zIndex: 2 })
     overlay.setMap(map)
-    map.panTo(position)
     return () => overlay.setMap(null)
   }, [context, destination])
 
@@ -114,11 +121,13 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
     if (!context || !clusterer) return
     const { maps, map } = context
     const ids = new Set(results.map(result => result.id))
-    if ([...markersRef.current.keys()].some(id => !ids.has(id))) {
-      clusterer.clear()
-      markerIdsRef.current.clear()
-      markersRef.current.clear()
+    const removed: MapMarker[] = []
+    for (const [id, marker] of markersRef.current) if (!ids.has(id)) {
+      removed.push(marker)
+      markersRef.current.delete(id)
+      markerIdsRef.current.delete(marker)
     }
+    if (removed.length) clusterer.removeMarkers(removed, true)
     const added: MapMarker[] = []
     for (const result of results) {
       if (markersRef.current.has(result.id)) continue
@@ -128,22 +137,37 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
       markersRef.current.set(result.id, marker)
       added.push(marker)
     }
-    if (added.length) clusterer.addMarkers(added)
-    if (results.length && (!fittedRef.current || fitResults)) {
-      const bounds = new maps.LatLngBounds()
-      for (const result of results) bounds.extend(new maps.LatLng(result.lat, result.lng))
-      if (destination) bounds.extend(new maps.LatLng(destination.lat, destination.lng))
-      map.setBounds(bounds, 110, 48, 48, 48)
-      fittedRef.current = true
-    }
-  }, [context, results, destination, fitResults])
+    if (added.length) clusterer.addMarkers(added, true)
+    if (added.length || removed.length) clusterer.redraw()
+  }, [context, results])
+
+  const focusDestination = () => {
+    if (!context || !destination) return
+    context.map.setLevel(6)
+    context.map.setCenter(new context.maps.LatLng(destination.lat, destination.lng))
+    onViewport(readBounds(context.map))
+  }
+  useLayoutEffect(() => { focusDestination() }, [context, destination, searchVersion, onViewport])
 
   const selected = results.find(result => result.id === selectedId)
   useEffect(() => {
     if (!context || !selected) return
-    context.map.setLevel(4)
-    context.map.panTo(new context.maps.LatLng(selected.lat, selected.lng))
-  }, [context, selected?.id, selected?.lat, selected?.lng])
+    const content = document.createElement('span')
+    content.className = 'selected-apartment-marker'
+    content.textContent = selected.name
+    const overlay = new context.maps.CustomOverlay({ position: new context.maps.LatLng(selected.lat, selected.lng), content, yAnchor: 1.6, zIndex: 3 })
+    overlay.setMap(context.map)
+    return () => overlay.setMap(null)
+  }, [context, selected])
+
+  const showAll = () => {
+    if (!context || !allResults.length) return
+    const bounds = new context.maps.LatLngBounds()
+    for (const result of allResults) bounds.extend(new context.maps.LatLng(result.lat, result.lng))
+    if (destination) bounds.extend(new context.maps.LatLng(destination.lat, destination.lng))
+    context.map.setBounds(bounds, 48, 48, 48, 48)
+  }
+
 
   return (
     <>
@@ -154,6 +178,14 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
         aria-label="서울·경기도 지도"
         aria-busy={status === 'loading'}
       />
+      {status === 'ready' && <div className="map-controls" role="group" aria-label="지도 조작">
+        <div className="map-zoom-controls">
+          <button type="button" aria-label="지도 확대" onClick={() => context?.map.setLevel(Math.max(1, context.map.getLevel() - 1))}>＋</button>
+          <button type="button" aria-label="지도 축소" onClick={() => context?.map.setLevel(Math.min(14, context.map.getLevel() + 1))}>−</button>
+        </div>
+        {destination && <button type="button" onClick={focusDestination}>목적지로</button>}
+        {allResults.length > 0 && <button type="button" onClick={showAll}>찾은 집 모두 보기</button>}
+      </div>}
       {status !== 'ready' && (
         <div className="map-status" role={status === 'error' ? 'alert' : 'status'}>
           {status === 'loading' && <p>지도를 불러오고 있습니다.</p>}
@@ -176,4 +208,9 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
       )}
     </>
   )
+}
+
+function readBounds(map: MapInstance): Bounds {
+  const bounds = map.getBounds(), sw = bounds.getSouthWest(), ne = bounds.getNorthEast()
+  return { south: sw.getLat(), west: sw.getLng(), north: ne.getLat(), east: ne.getLng() }
 }

@@ -232,8 +232,6 @@ summary:focus-visible {
 .results-summary p { margin: 6px 0; }
 .results-summary > p:first-of-type { color: #6d747b; font-size: 12px; }
 .results-basis { color: #6d747b; font-size: 12px; }
-.results-summary progress { width: 100%; height: 5px; accent-color: #256ef4; }
-.search-progress { color: #6d747b; font-size: 12px; }
 .search-message[role='alert'] { color: #9e2929; }
 .results-notice { margin-top: 12px; color: #6d747b; font-size: 12px; }
 .results-notice a { color: inherit; }
@@ -479,3 +477,24 @@ summary { cursor: pointer; }
 }
 
 .apartment-provider { margin: 4px 0; color: #6d747b; font-size: 12px; }
+
+.search-message { min-height: 22px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.results-summary h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.results-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; color: #6d747b; font-size: 12px; }
+.results-actions button { border: 1px solid #cdd1d5; border-radius: 6px; padding: 4px 8px; background: #fff; color: #464c53; font-size: 12px; cursor: pointer; }
+.results-actions button:disabled { opacity: .5; cursor: default; }
+.results-partial { margin: 0; padding: 12px 16px; color: #6d747b; font-size: 13px; }
+.results-skeleton > div { padding: 20px 16px; border-bottom: 1px solid #e6e8ea; }
+.results-skeleton span { display: block; width: 70%; height: 14px; margin-bottom: 12px; border-radius: 4px; background: #f0f2f3; }
+.results-skeleton span:first-child { width: 50%; height: 20px; }
+.results-skeleton span:last-child { width: 90%; }
+.map-controls { position: absolute; z-index: 3; right: 12px; bottom: 12px; display: flex; align-items: flex-end; flex-direction: column; gap: 8px; }
+.map-controls button { min-height: 36px; border: 1px solid #cdd1d5; border-radius: 6px; padding: 6px 10px; background: #fff; color: #464c53; box-shadow: 0 1px 2px #0000001a; font-size: 13px; cursor: pointer; }
+.map-zoom-controls { display: grid; gap: 4px; }
+.map-zoom-controls button { width: 36px; padding: 2px; font-size: 20px; }
+.selected-apartment-marker { display: block; max-width: 200px; overflow: hidden; border-radius: 6px; padding: 5px 10px; background: #000; color: #fff; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
+
+.search-message[role='alert'] { white-space: normal; }
+@media (max-width: 767px) {
+  .map-page:has(.map-panel[data-position='expanded']) .map-controls { display: none; }
+}

@@ -4,6 +4,8 @@ export interface MapPosition {
 }
 
 export interface MapInstance {
+  getBounds(): MapBounds
+  getLevel(): number
   getCenter(): MapPosition
   setCenter(position: MapPosition): void
   relayout(): void
@@ -12,7 +14,7 @@ export interface MapInstance {
   setLevel(level: number): void
 }
 
-interface MapBounds { extend(position: MapPosition): void }
+interface MapBounds { extend(position: MapPosition): void; getSouthWest(): MapPosition; getNorthEast(): MapPosition }
 export interface MapMarker { setMap(map: MapInstance | null): void }
 export interface MapCluster { getMarkers(): MapMarker[]; getBounds(): MapBounds }
 export interface PlaceData {
@@ -38,7 +40,7 @@ export interface MapsSdk {
     minClusterSize: number; disableClickZoom: boolean; texts: (size: number) => string
     calculator: number[]
     styles: Record<string, string>[]
-  }) => { clear(): void; addMarkers(markers: MapMarker[]): void }
+  }) => { clear(): void; addMarkers(markers: MapMarker[], nodraw?: boolean): void; removeMarkers(markers: MapMarker[], nodraw?: boolean): void; redraw(): void }
   event: {
     addListener(target: object, name: string, callback: (cluster: MapCluster) => void): void
     removeListener(target: object, name: string, callback: (cluster: MapCluster) => void): void

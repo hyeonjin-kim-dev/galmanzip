@@ -1,5 +1,7 @@
 import { sortApartments } from './routing'
-import { searchZones, splitZone } from './zones'
+import { nextZoneIndex, partitionZone, searchZones, splitZone } from './zones'
+import type { SearchZone } from './zones'
+import type { Bounds } from './bounds'
 import { inServiceArea, queryPlaces, toPlace } from './places'
 import type { ApartmentResult, Place, Reachability, SearchSnapshot } from './types'
 
@@ -60,83 +62,119 @@ async function reachability(destination: Place, minutes: number, signal: AbortSi
   return result
 }
 
+type PlaceResponse = Awaited<ReturnType<typeof queryPlaces>>
+type ResponseOutcome = { response: PlaceResponse; error?: never } | { response?: never; error: unknown }
+type AreaTask = { zone: SearchZone; page: number; received: number; response?: Promise<ResponseOutcome> }
+
 export async function searchApartments(destination: Place, minMinutes: number, maxMinutes: number, signal: AbortSignal,
-  update: (snapshot: SearchSnapshot) => void) {
+  update: (snapshot: SearchSnapshot) => void, getViewport: () => Bounds | null = () => null) {
   if (!Number.isFinite(minMinutes) || minMinutes < 0 || minMinutes > maxMinutes) throw new Error('소요 시간을 확인해 주세요.')
+  signal.throwIfAborted()
+  const initialBounds = getViewport()
+  const started = performance.now()
+  // 현재 화면의 장소 응답을 교통망 준비와 겹쳐 기다린다. 경로 검증 전에는 결과로 표시하지 않는다.
+  const early = initialBounds ? queryPlaces('아파트', signal, initialBounds).then<ResponseOutcome, ResponseOutcome>(
+    response => ({ response }), error => ({ error })) : undefined
   const graph = await reachability(destination, maxMinutes, signal)
   signal.throwIfAborted()
   if (!graph.stops.length) throw new Error('목적지 주변에서 자료에 포함된 정류장을 찾지 못했습니다.')
-  const zones = searchZones(graph.stops, destination, maxMinutes)
-  const pending = [...zones].reverse()
-  const places = new Map<string, ApartmentResult | null>()
-  let completed = 0, total = zones.length, limited = false, lastEmission = 0, dirty = false
+  let pending: AreaTask[] = []
+  const roots = searchZones(graph.stops, destination, maxMinutes)
+  const foreground: SearchZone[] = []
+  for (const root of roots) {
+    if (initialBounds && early) {
+      const parts = partitionZone(root, initialBounds)
+      if (parts.inside) foreground.push(parts.inside)
+      pending.push(...parts.outside.map(zone => ({ zone, page: 1, received: 0 })))
+    } else pending.push({ zone: root, page: 1, received: 0 })
+  }
+  if (initialBounds && early && foreground.length) pending.push({
+    zone: { ...initialBounds, depth: 0, priority: 0, coverage: foreground.flatMap(zone => zone.coverage) },
+    page: 1, received: 0, response: early,
+  })
+  const places = new Set<string>()
+  let completed = 0, total = pending.length, limited = false, active: SearchZone | undefined
   let results: ApartmentResult[] = []
+  let added: ApartmentResult[] = []
   const notice = '각 도보 구간이 5분 이하인 경로에서 환승 없는 경로를 우선합니다. 교통 자료로 추정한 결과이며 실제 운행은 외부 길찾기에서 확인해 주세요.'
-  const emit = (status: SearchSnapshot['status'], message: string, force = false) => {
-    if (!force && status === 'loading' && performance.now() - lastEmission < 250) return
-    lastEmission = performance.now()
-    if (dirty) {
-      results = sortApartments([...places.values()].filter((value): value is ApartmentResult => value !== null))
-      dirty = false
+  const emit = (status: SearchSnapshot['status'], message: string) => {
+    if (added.length) {
+      results = [...results, ...sortApartments(added)]
+      added = []
     }
+    const areas = pending.map(task => task.zone)
+    if (active) areas.push(active)
     update({ status, message, completed, total, limited, notice, results,
+      pendingAreas: areas.map(({ south, west, north, east }) => ({ south, west, north, east })),
       source: graph.source, coverage: graph.coverage })
   }
-  const loading = graph.stops.length > 10000 ? '조회 범위가 넓어 시간이 걸립니다. 결과는 확인되는 대로 표시되며 언제든 중단할 수 있습니다.' : '정류장 주변 아파트와 도착 경로를 조회하고 있습니다.'
-  emit('loading', loading, true)
-  let nextRequest = 0
+  const loading = '집을 계속 찾고 있어요.'
+  emit('loading', loading)
+  let nextRequest = early ? started + 200 : 0
   try {
     while (pending.length) {
       signal.throwIfAborted()
-      const zone = pending.pop()!
-      let received = 0
-      for (let page = 1; page <= 45; page++) {
-        // 응답 대기와 중복 휴지를 겹치지 않되, 조회 시작 간격은 유지한다.
-        const remaining = nextRequest - performance.now()
-        if (remaining > 0) await new Promise<void>((resolve, reject) => {
+      const view = getViewport()
+      const index = nextZoneIndex(pending.map(task => task.zone), view, destination)
+      const remaining = nextRequest - performance.now()
+      if (!pending[index].response && remaining > 0) {
+        await new Promise<void>((resolve, reject) => {
           const abort = () => { window.clearTimeout(timer); reject(signal.reason) }
           const timer = window.setTimeout(() => { signal.removeEventListener('abort', abort); resolve() }, remaining)
           signal.addEventListener('abort', abort, { once: true })
         })
+        // 대기 중 바뀐 지도도 실제 요청 직전에 다시 반영한다.
+        continue
+      }
+      const task = pending.splice(index, 1)[0]
+      // 페이지를 읽는 중 지도가 바뀌어도 다음 요청부터 새 영역을 먼저 확인한다.
+      if (view && task.page === 1 && !task.response) {
+        const parts = partitionZone(task.zone, view)
+        if (parts.inside) {
+          task.zone = parts.inside
+          pending.push(...parts.outside.map(zone => ({ zone, page: 1, received: 0 })))
+          total += parts.outside.length
+        }
+      }
+      active = task.zone
+      let response: PlaceResponse
+      if (task.response) {
+        const outcome = await task.response
+        if ('error' in outcome) throw outcome.error
+        response = outcome.response!
+      } else {
         signal.throwIfAborted()
         nextRequest = performance.now() + 200
-        const response = await queryPlaces('아파트', signal, zone, page)
-        signal.throwIfAborted()
-        received += response.data.length
-        const batch: Place[] = []
-        for (const data of response.data) {
-          if (!/아파트\s*$/.test(data.category_name) || !inServiceArea(data.address_name) || places.has(data.id)) continue
-          const place = toPlace(data)
-          if (!place) continue
-          places.set(place.id, null)
-          batch.push(place)
-        }
-        if (batch.length) {
-          const ranked = await routingTask<(ApartmentResult | null)[]>({ kind: 'rank', destination, minutes: maxMinutes, minMinutes, places: batch }, signal)
-          signal.throwIfAborted()
-          batch.forEach((place, index) => {
-            const result = ranked[index]
-            places.set(place.id, result)
-            if (result) dirty = true
-          })
-        }
-        emit('loading', loading, dirty && results.length === 0)
-        // 총건수가 노출 한도에 잘릴 수도 있으므로 한도에 도달한 지역부터 세분화한다.
-        if (page === 1 && response.total >= 45) {
-          const children = splitZone(zone)
-          if (children.length) { pending.push(...children.reverse()); total += children.length; break }
-        }
-        if (!response.more || page === 45) {
-          if (response.more || response.total > received || response.total >= 45) {
-            const children = splitZone(zone)
-            if (children.length) { pending.push(...children.reverse()); total += children.length }
-            else limited = true
-          }
-          break
-        }
-        if (!response.data.length) { limited = true; break }
+        response = await queryPlaces('아파트', signal, task.zone, task.page)
       }
-      completed++
+      signal.throwIfAborted()
+      const received = task.received + response.data.length
+      const batch: Place[] = []
+      for (const data of response.data) {
+        if (!/아파트\s*$/.test(data.category_name) || !inServiceArea(data.address_name) || places.has(data.id)) continue
+        const place = toPlace(data)
+        if (!place) continue
+        places.add(place.id)
+        batch.push(place)
+      }
+      if (batch.length) {
+        const ranked = await routingTask<(ApartmentResult | null)[]>({ kind: 'rank', destination, minutes: maxMinutes, minMinutes, places: batch }, signal)
+        signal.throwIfAborted()
+        added.push(...ranked.filter((value): value is ApartmentResult => value !== null))
+      }
+      const capped = response.total >= 45 || response.total > received
+      if (!response.data.length && response.more) {
+        limited = true
+        completed++
+      } else if ((task.page === 1 && response.total >= 45) || !response.more || task.page === 45) {
+        const children = capped || response.more ? splitZone(task.zone) : []
+        if (children.length) {
+          pending.push(...children.map(zone => ({ zone, page: 1, received: 0 })))
+          total += children.length
+        } else if (capped || response.more) limited = true
+        completed++
+      } else pending.push({ zone: task.zone, page: task.page + 1, received })
+      active = undefined
       emit('loading', loading)
     }
     signal.throwIfAborted()

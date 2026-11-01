@@ -1,3 +1,5 @@
+import type { Bounds } from './bounds.ts'
+
 export interface Point { lat: number; lng: number }
 export interface Place extends Point { id: string; name: string; address: string; url: string }
 export interface Stop extends Point { id: string; name: string; mode?: 'bus' | 'rail' }
@@ -55,4 +57,5 @@ export interface SearchSnapshot {
   source?: TransitNetwork['source']
   coverage?: string
   notice?: string
+  pendingAreas?: Bounds[]
 }

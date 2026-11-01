@@ -13,6 +13,7 @@
 - [배포 목적과 초기 설정](docs/deployment.md): 브라우저 확인을 우선한 배포 결정과 저장소 소유자가 확인할 GitHub Pages 설정을 설명한다.
 - [Kakao 지도 외부 설정](docs/kakao-map-setup.md): 지도 사용을 위한 카카오 앱 활성화와 도메인 등록 등 저장소 소유자의 초기 설정을 설명한다.
 - [경로 검색 원칙](docs/routing-policy.md): 서버 없는 자체 계산의 배경과 무환승 우선 기준, 성능 검증·추정·저장 제약을 설명한다.
+- [검색 경험의 기준](docs/search-experience.md): 지도 영역 우선 조회, 점진적 결과 표시와 읽던 목록·지도 유지 요구를 설명한다.
 - [교통 자료 출처와 제약](docs/search-data-setup.md): 수령한 KTDB 자료의 기준일, 이용 근거와 누락·정확도 제약을 설명한다.
 - [카카오 제휴 API의 이전 검토](docs/kakao-transit-setup.md): 현재 채택하지 않은 외부 길찾기 상품의 검토 배경을 설명한다.
 - [개발 작업 흐름](docs/workflow.md): 작업 인계 기록과 관련 변경의 한국어 커밋·푸시 기준을 설명한다.

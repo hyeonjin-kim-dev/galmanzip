@@ -1,17 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import KakaoMap from './components/KakaoMap'
 import MapPanel from './components/MapPanel'
 import DestinationSearch from './components/DestinationSearch'
 import ApartmentResults from './components/ApartmentResults'
 import { searchApartments } from './search/search'
-import type { Place, SearchSnapshot } from './search/types'
-
-const emptySearch: SearchSnapshot = { status: 'idle', results: [], message: '', completed: 0, total: 0, limited: false }
+import { around, sameBounds } from './search/bounds'
+import type { Bounds } from './search/bounds'
+import { initialView, isViewLoading, viewReducer } from './search/view'
+import type { Place } from './search/types'
 
 export default function App() {
   const [sheetHeight, setSheetHeight] = useState('42%')
-  const [snapshot, setSnapshot] = useState<SearchSnapshot>(emptySearch)
+  const [view, dispatch] = useReducer(viewReducer, initialView)
+  const snapshot = view.snapshot
+  const viewportRef = useRef<Bounds | null>(null)
+  const onViewport = useCallback((bounds: Bounds) => {
+    if (sameBounds(viewportRef.current, bounds)) return
+    viewportRef.current = bounds
+    dispatch({ type: 'bounds', bounds })
+  }, [])
   const [destination, setDestination] = useState<Place | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [searchVersion, setSearchVersion] = useState(0)
@@ -21,7 +29,7 @@ export default function App() {
 
   const reset = () => {
     searchRef.current?.abort()
-    setSnapshot(emptySearch)
+    dispatch({ type: 'reset' })
     setDestination(null)
     setSelectedId(null)
   }
@@ -33,20 +41,25 @@ export default function App() {
     setDestination(place)
     setSelectedId(null)
     setSearchVersion(version => version + 1)
-    setSnapshot({ ...emptySearch, status: 'loading', message: '아파트 후보 구역을 찾고 있습니다.' })
+    const bounds = around(place)
+    viewportRef.current = bounds
+    dispatch({ type: 'begin', bounds })
     try {
+      // 먼저 지도의 목적지 이동과 첫 화면을 반영한 뒤 조회를 시작한다.
+      await new Promise(resolve => setTimeout(resolve, 0))
+      controller.signal.throwIfAborted()
       await searchApartments(place, minMinutes, maxMinutes, controller.signal, next => {
-        if (!controller.signal.aborted) setSnapshot(next)
-      })
+        if (!controller.signal.aborted) dispatch({ type: 'snapshot', snapshot: next })
+      }, () => viewportRef.current)
     } catch (error) {
-      if (!controller.signal.aborted) setSnapshot(current => ({ ...current, status: 'error',
-        message: error instanceof Error ? error.message : '검색을 완료하지 못했습니다.' }))
+      if (!controller.signal.aborted) dispatch({ type: 'snapshot', snapshot: { ...initialView.snapshot, status: 'error',
+        message: error instanceof Error ? error.message : '검색을 완료하지 못했습니다.' } })
     }
   }
 
   const cancel = () => {
     searchRef.current?.abort()
-    setSnapshot(current => ({ ...current, status: 'cancelled', message: '검색을 중단했습니다.' }))
+    dispatch({ type: 'cancel' })
   }
 
   return (
@@ -57,11 +70,12 @@ export default function App() {
       <h1 className="visually-hidden">갈만한 거리의 집</h1>
       <MapPanel onHeightChange={setSheetHeight} searchVersion={searchVersion}
         search={<DestinationSearch busy={snapshot.status === 'loading'} onSearch={search} onReset={reset} onCancel={cancel} />}>
-        <ApartmentResults key={searchVersion} snapshot={snapshot} destination={destination} selectedId={selectedId} onSelect={setSelectedId} />
+        <ApartmentResults key={searchVersion} snapshot={snapshot} results={view.results} viewLoading={isViewLoading(view)}
+          onSort={() => dispatch({ type: 'sort' })} destination={destination} selectedId={selectedId} onSelect={setSelectedId} />
       </MapPanel>
       <section className="map-viewport" aria-label="지도 영역">
-        <KakaoMap results={snapshot.results} destination={destination} selectedId={selectedId}
-          fitResults={snapshot.status !== 'loading' && selectedId === null} onSelect={setSelectedId} />
+        <KakaoMap results={view.results} allResults={snapshot.results} searchVersion={searchVersion} onViewport={onViewport} destination={destination} selectedId={selectedId}
+          onSelect={setSelectedId} />
       </section>
     </main>
   )

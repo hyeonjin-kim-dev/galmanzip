@@ -6,16 +6,39 @@
     getLat() { return this.lat }
     getLng() { return this.lng }
   }
+  const fire = (target, name, value) => (target.events?.[name] ?? []).forEach(callback => callback(value))
   class Map {
-    constructor(container, options) { this.container = container; this.center = options.center; state.map = this }
+    constructor(container, options) { this.container = container; this.center = options.center; this.level = options.level; state.map = this; state.level = this.level }
     getCenter() { return this.center }
-    setCenter(center) { this.center = center }
-    relayout() {}
-    setBounds() { state.fitCount = (state.fitCount || 0) + 1 }
-    panTo(center) { this.center = center }
-    setLevel(level) { state.level = level }
+    getLevel() { return this.level }
+    getBounds() {
+      if (this.bounds) return this.bounds
+      const scale = 2 ** (this.level - 6), lat = 0.012 * scale * this.container.clientHeight / 600, lng = 0.016 * scale * this.container.clientWidth / 900
+      return new LatLngBounds(new LatLng(this.center.lat - lat, this.center.lng - lng), new LatLng(this.center.lat + lat, this.center.lng + lng))
+    }
+    changed() { setTimeout(() => fire(this, 'idle'), 0) }
+    setCenter(center) {
+      if (this.center.lat !== center.lat || this.center.lng !== center.lng) this.bounds = null
+      this.center = center; this.changed()
+    }
+    relayout() { this.changed() }
+    setBounds(bounds) {
+      state.fitCount = (state.fitCount || 0) + 1
+      const sw = bounds.getSouthWest(), ne = bounds.getNorthEast()
+      const lat = Math.max(0.001, (ne.lat - sw.lat) * 0.1), lng = Math.max(0.001, (ne.lng - sw.lng) * 0.1)
+      this.bounds = new LatLngBounds(new LatLng(sw.lat - lat, sw.lng - lng), new LatLng(ne.lat + lat, ne.lng + lng))
+      this.center = new LatLng((sw.lat + ne.lat) / 2, (sw.lng + ne.lng) / 2)
+      this.changed()
+    }
+    panTo(center) { this.setCenter(center) }
+    setLevel(level) { this.level = level; state.level = level; this.bounds = null; this.changed() }
   }
-  class LatLngBounds { extend() {} }
+  class LatLngBounds {
+    constructor(sw, ne) { this.south = Infinity; this.west = Infinity; this.north = -Infinity; this.east = -Infinity; if (sw) this.extend(sw); if (ne) this.extend(ne) }
+    extend(point) { this.south = Math.min(this.south, point.lat); this.north = Math.max(this.north, point.lat); this.west = Math.min(this.west, point.lng); this.east = Math.max(this.east, point.lng) }
+    getSouthWest() { return new LatLng(this.south, this.west) }
+    getNorthEast() { return new LatLng(this.north, this.east) }
+  }
   class Marker { constructor(options) { this.options = options; state.createdMarkers++ } setMap() {} }
   class CustomOverlay {
     constructor(options) { this.content = options.content }
@@ -24,18 +47,24 @@
   class MarkerClusterer {
     constructor(options) { this.options = options; state.clusterOptions = options; state.clusterer = this }
     clear() { state.markers = []; this.element?.remove() }
-    addMarkers(markers) {
-      state.markers.push(...markers)
+    addMarkers(markers, nodraw) { state.markers.push(...markers); if (!nodraw) this.redraw() }
+    removeMarkers(markers, nodraw) { state.markers = state.markers.filter(marker => !markers.includes(marker)); if (!nodraw) this.redraw() }
+    redraw() {
       this.element?.remove()
       if (!state.markers.length) return
       const element = this.element = document.createElement('button')
       element.className = 'test-cluster'
       element.textContent = this.options.texts(state.markers.length)
       Object.assign(element.style, this.options.styles[0], { position: 'absolute', top: '45%', left: '45%' })
-      element.onclick = () => this.listener?.({ getMarkers: () => state.markers, getBounds: () => new LatLngBounds() })
+      element.onclick = () => {
+        const bounds = new LatLngBounds()
+        state.markers.forEach(marker => bounds.extend(marker.options.position))
+        fire(this, 'clusterclick', { getMarkers: () => state.markers, getBounds: () => bounds })
+      }
       this.options.map.container.append(element)
     }
   }
+
   const place = (id, name, lat, lng, extra = {}) => ({ id, place_name: name, x: String(lng), y: String(lat),
     address_name: '경기 성남시 분당구', road_address_name: '경기 성남시 검증로 1',
     category_name: '부동산 > 주거시설 > 아파트', place_url: '', ...extra })
@@ -63,10 +92,10 @@
         const data = visible.slice(offset, offset + state.pageSize)
         callback(data, data.length ? 'OK' : 'ZERO_RESULT', { hasNextPage: offset + state.pageSize < visible.length,
           totalCount: state.cappedTotal ? visible.length : all.length })
-      }, state.delay)
+      }, state.delayFor ? state.delayFor(query, options) : state.delay)
     }
   }
   window.kakao = { maps: { load: callback => callback(), LatLng, Map, LatLngBounds, Marker, CustomOverlay, MarkerClusterer,
-    event: { addListener: (target, name, callback) => target.listener = callback, removeListener: target => target.listener = null },
+    event: { addListener: (target, name, callback) => { target.events ??= {}; (target.events[name] ??= []).push(callback) }, removeListener: (target, name, callback) => { target.events[name] = (target.events[name] ?? []).filter(value => value !== callback) } },
     services: { Places, Status: { OK: 'OK', ZERO_RESULT: 'ZERO_RESULT', ERROR: 'ERROR' }, SortBy: { DISTANCE: 'distance' } } } }
 })()

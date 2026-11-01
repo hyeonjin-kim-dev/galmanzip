@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { ACCESS_RADIUS, DESTINATION_RADIUS } from '../src/search/routing.ts'
-import { searchZones, splitZone } from '../src/search/zones.ts'
+import { nextZoneIndex, partitionZone, searchZones, splitZone } from '../src/search/zones.ts'
 import type { Bounds } from '../src/search/zones.ts'
 import type { Point, ReachableStop } from '../src/search/types.ts'
 
@@ -65,4 +65,37 @@ test('같은 좌표의 많은 결과도 영역 분할이 무한히 이어지지 
     pending.push(...children.filter(child => contains(child, point)))
   }
   assert.ok(leaves > 0)
+})
+
+test('지도 안쪽을 먼저 조회하도록 영역을 나눠도 원래 범위에 빈틈이 생기지 않는다', () => {
+  const roots = searchZones([stop('A', 37.4, 127.1)], { lat: 37.4, lng: 127.1 }, 30)
+  const view = { south: 37.399, north: 37.401, west: 127.099, east: 127.101 }
+  for (const root of roots) {
+    const parts = partitionZone(root, view)
+    const all = [...parts.outside, ...(parts.inside ? [parts.inside] : [])]
+    for (let y = 0; y <= 30; y++) for (let x = 0; x <= 30; x++) {
+      const point = { lat: root.south + (root.north - root.south) * y / 30, lng: root.west + (root.east - root.west) * x / 30 }
+      if (root.coverage.some(area => contains(area, point))) assert.ok(all.some(area => contains(area, point)))
+    }
+    if (parts.inside) {
+      assert.ok(parts.inside.south >= view.south && parts.inside.north <= view.north)
+      assert.ok(parts.inside.west >= view.west && parts.inside.east <= view.east)
+    }
+  }
+})
+
+test('지도와 경계만 맞닿은 영역을 반복 분할하지 않는다', () => {
+  const root = searchZones([stop('A', 37.4, 127.1)], { lat: 37.4, lng: 127.1 }, 30)[0]
+  const parts = partitionZone(root, { ...root, west: root.east, east: root.east + 0.01 })
+  assert.equal(parts.inside, undefined)
+  assert.deepEqual(parts.outside, [root])
+})
+
+test('지도 이동 후에는 이전 지역의 남은 조회보다 새 지도 안의 지역을 먼저 고른다', () => {
+  const destination = { lat: 37.4, lng: 127.1 }
+  const roots = searchZones([stop('먼곳', 37.7, 127.4)], destination, 30)
+  const before = nextZoneIndex(roots, { south: 37.39, north: 37.41, west: 127.09, east: 127.11 }, destination)
+  const after = nextZoneIndex(roots, { south: 37.69, north: 37.71, west: 127.39, east: 127.41 }, destination)
+  assert.notEqual(before, after)
+  assert.ok(contains(roots[after], { lat: 37.7, lng: 127.4 }))
 })

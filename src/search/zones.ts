@@ -1,11 +1,11 @@
 import { ACCESS_RADIUS, DESTINATION_RADIUS } from './routing.ts'
 import type { Point, ReachableStop } from './types.ts'
+import { intersects } from './bounds.ts'
+import type { Bounds } from './bounds.ts'
 
-export interface Bounds { south: number; west: number; north: number; east: number }
+export type { Bounds } from './bounds.ts'
 interface Coverage extends Bounds { priority: number }
 export interface SearchZone extends Bounds { coverage: Coverage[]; depth: number; priority: number }
-
-const intersects = (a: Bounds, b: Bounds) => a.south <= b.north && a.north >= b.south && a.west <= b.east && a.east >= b.west
 
 function circle(point: Point, radius: number, priority: number): Coverage {
   const angle = Math.max(1, radius) / 6371000
@@ -66,4 +66,31 @@ export function splitZone(parent: SearchZone): SearchZone[] {
     const coverage = parent.coverage.filter(area => intersects(bounds, area))
     return coverage.length ? [zone(bounds, coverage, parent.depth + 1)] : []
   }).sort((a, b) => a.priority - b.priority)
+}
+
+// 지도 안쪽을 먼저 조회해도 바깥쪽 후보 영역은 빠뜨리지 않는다.
+export function partitionZone(parent: SearchZone, view: Bounds): { inside?: SearchZone; outside: SearchZone[] } {
+  if (!intersects(parent, view)) return { outside: [parent] }
+  const inside = { south: Math.max(parent.south, view.south), north: Math.min(parent.north, view.north),
+    west: Math.max(parent.west, view.west), east: Math.min(parent.east, view.east) }
+  const clip = (bounds: Bounds) => {
+    const coverage = parent.coverage.filter(area => intersects(bounds, area))
+    return bounds.south < bounds.north && bounds.west < bounds.east && coverage.length ? [zone(bounds, coverage, parent.depth)] : []
+  }
+  return { inside: clip(inside)[0], outside: [
+    { ...parent, north: inside.south }, { ...parent, south: inside.north },
+    { ...inside, west: parent.west, east: inside.west }, { ...inside, west: inside.east, east: parent.east },
+  ].flatMap(clip) }
+}
+
+export function nextZoneIndex(zones: SearchZone[], view: Bounds | null, destination: Point): number {
+  const center = view ? { lat: (view.south + view.north) / 2, lng: (view.west + view.east) / 2 } : destination
+  let best = -1, score = Infinity
+  zones.forEach((area, index) => {
+    const lat = (area.south + area.north) / 2, lng = (area.west + area.east) / 2
+    const candidate = (view && intersects(area, view) ? 0 : 1000)
+      + (lat - center.lat) ** 2 + (lng - center.lng) ** 2 + area.priority * 1e-12
+    if (candidate < score) { best = index; score = candidate }
+  })
+  return best
 }
