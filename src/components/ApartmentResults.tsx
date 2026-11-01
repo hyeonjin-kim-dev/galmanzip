@@ -73,6 +73,7 @@ export default function ApartmentResults({ snapshot, destination, selectedId, on
       <div className="results-summary">
         <h2>{snapshot.results.length || snapshot.status === 'complete' ? `아파트 ${snapshot.results.length.toLocaleString('ko-KR')}곳` : '아파트 검색'}</h2>
         <p>예상 총시간순 · 같은 시간이면 환승 적은 순</p>
+        {snapshot.source && <p className="results-basis">{snapshot.source.date}{snapshot.source.reference && <> · {snapshot.source.reference}</>}</p>}
         <p className="search-message" role={snapshot.status === 'error' ? 'alert' : 'status'}>{snapshot.message}</p>
         {snapshot.status === 'loading' && snapshot.total > 0 && <>
           <progress aria-label="주변 아파트 조회 진행률" value={snapshot.completed} max={snapshot.total} />

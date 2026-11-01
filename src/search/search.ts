@@ -31,13 +31,16 @@ export async function searchApartments(destination: Place, minutes: number, sign
   if (!graph.stops.length) throw new Error('목적지 주변에서 지원하는 정류장을 찾지 못했습니다. 다른 목적지를 선택해 주세요.')
   const zones = searchZones(graph.stops)
   const allZones = [{ ...destination, radius: DESTINATION_RADIUS }, ...zones]
+  const loadingMessage = allZones.length > 500
+    ? '조회 범위가 넓어 시간이 걸립니다. 확인한 아파트부터 표시하며 언제든 중단할 수 있습니다.'
+    : '도달 가능한 정류장 주변 아파트를 조회하고 있습니다.'
   const nearbyStops = indexStops(graph.stops)
   const places = new Map<string, ApartmentResult | null>()
   let completed = 0, limited = false
   const emit = (status: SearchSnapshot['status'], message: string) => update({ status, message,
     completed, total: allZones.length, limited, results: sortApartments([...places.values()].filter((value): value is ApartmentResult => value !== null)),
     source: graph.source, coverage: graph.coverage })
-  emit('loading', '도달 가능한 정류장 주변 아파트를 조회하고 있습니다.')
+  emit('loading', loadingMessage)
   try {
     // 검색 범위를 생략하지 않고 순차 조회하며 API 호출 간격을 둔다.
     for (const zone of allZones) {
@@ -59,7 +62,7 @@ export async function searchApartments(destination: Place, minutes: number, sign
         await new Promise(resolve => setTimeout(resolve, 200))
       }
       completed++
-      emit('loading', '도달 가능한 정류장 주변 아파트를 조회하고 있습니다.')
+      emit('loading', loadingMessage)
       await new Promise(resolve => setTimeout(resolve, 200))
     }
     signal.throwIfAborted()

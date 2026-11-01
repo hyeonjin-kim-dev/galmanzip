@@ -28,6 +28,8 @@ jobs:
         run: npm ci
       - name: 경로 계산 검증
         run: npm test
+      - name: 교통 자료 변환 검증
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
       - name: 타입 검사와 빌드
         env:
           VITE_KAKAO_MAP_KEY: ${{ vars.VITE_KAKAO_MAP_KEY }}

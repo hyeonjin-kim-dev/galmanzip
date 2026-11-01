@@ -105,5 +105,31 @@ test('자료 준비 전·유효하지 않은 노선·검색 조건을 오류로 
   assert.throws(() => validateNetwork(network([line('오류', ['A', '없는역'], [100])])), /노선 자료/)
   assert.throws(() => findReachableStops(network(), destination, 181), /소요시간/)
   assert.throws(() => findReachableStops(network(), { lat: NaN, lng: 127 }, 30), /좌표/)
-  assert.throws(() => validateNetwork({ ...network(), transfers: [{ from: 'A', to: 'A', seconds: 120 }] }), /동일 정류장 환승/)
+})
+
+test('중간 정류장의 정차 시간을 포함하고 승차·하차 지점의 정차는 중복하지 않는다', () => {
+  const service = line('정차', ['A', 'B', 'C'], [300, 300])
+  service.dwellSeconds = [50, 45, 60]
+  const result = findReachableStops(network([service]), destination, 30).stops.find(stop => stop.id === 'A')!
+  assert.equal(result.seconds, 765)
+  assert.equal(result.legs.reduce((sum, leg) => sum + leg.seconds, 0), 765)
+})
+
+test('같은 정류장에서 차를 바꾸는 경우에도 최소 환승 시간을 지킨다', () => {
+  const graph = network([line('첫차', ['A', 'B'], [300]), line('둘째차', ['B', 'C'], [300])])
+  graph.transfers = [{ from: 'B', to: 'B', seconds: 180 }]
+  validateNetwork(graph)
+  const result = findReachableStops(graph, destination, 30).stops.find(stop => stop.id === 'A')!
+  assert.equal(result.seconds, 1020)
+  assert.equal(result.boardings, 2)
+})
+
+test('주변 정류장을 연쇄 도보로 연결해 지정된 철도 환승 시간을 우회하지 않는다', () => {
+  const graph = network([line('첫차', ['A', 'B'], [300]), line('둘째차', ['E', 'C'], [300])])
+  graph.stops = [...stops, { id: 'E', name: '환승역 다른 승강장', lat: 37.4001, lng: 127.13 },
+    { id: 'F', name: '역 앞 버스 정류장', lat: 37.40005, lng: 127.13 }]
+  graph.transfers = [{ from: 'B', to: 'E', seconds: 300 }]
+  const result = findReachableStops(graph, destination, 30).stops.find(stop => stop.id === 'A')!
+  assert.equal(result.seconds, 1140)
+  assert.equal(result.boardings, 2)
 })

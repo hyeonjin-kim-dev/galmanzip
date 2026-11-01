@@ -1,6 +1,7 @@
 """로컬 검증: 검증용 지도 키로 개발 서버를 실행한 뒤 python tests/browser_search.py 실행."""
 import json
 import os
+import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
@@ -33,7 +34,8 @@ def prepare(browser, mobile=False, network=NETWORK):
                                   is_mobile=mobile, has_touch=mobile)
     context.route('https://dapi.kakao.com/**', lambda route: route.fulfill(
         content_type='application/javascript', body=(ROOT / 'fixtures/kakao.js').read_text()))
-    context.route('**/data/transit.json', lambda route: route.fulfill(content_type='application/json', body=json.dumps(network)))
+    if network is not None:
+        context.route('**/data/transit.json', lambda route: route.fulfill(content_type='application/json', body=json.dumps(network)))
     page = context.new_page()
     errors = []
     page.on('pageerror', lambda error: errors.append(str(error)))
@@ -145,5 +147,36 @@ with sync_playwright() as p:
     assert app.locator('.map-page').evaluate('(element) => element.scrollWidth <= innerWidth')
     assert not errors, errors
     context.close()
-    browser.close()
     print('iframe 내부 검색과 작업 스레드 실행 검증 통과')
+
+    for mobile in (False, True):
+        context, page, errors = prepare(browser, mobile=mobile, network=None)
+        if mobile:
+            context.new_cdp_session(page).send('Emulation.setCPUThrottlingRate', {'rate': 4})
+        compressed = []
+        page.on('response', lambda response: compressed.append(response.url) if response.url.endswith('.json.gz') else None)
+        page.evaluate('''() => {
+          const state = window.__searchTest;
+          Object.assign(state.destination, { y: '37.384988', x: '127.123390' });
+          state.homes = [
+            { ...state.homes[3], y: '37.385488', x: '127.123390' },
+            { ...state.homes[2], y: '37.366143', x: '127.108097' },
+          ];
+        }''')
+        choose(page, touch=mobile)
+        started = time.monotonic()
+        page.get_by_role('button', name='검색', exact=True).click()
+        expect(page.locator('.results-basis')).to_contain_text('2025년 3월 평일 하루', timeout=30000)
+        calculated = time.monotonic() - started
+        expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=90000)
+        expect(page.locator('.apartment-card')).to_have_count(2)
+        expect(page.locator('.test-cluster')).to_have_text('2')
+        page.locator('[data-place-id="fast"] summary').click()
+        expect(page.locator('[data-place-id="fast"] .route-details')).to_contain_text('정자역 → 서현역.AK플라자')
+        assert len(compressed) == 1, compressed
+        assert not errors, errors
+        assert page.evaluate('localStorage.length + sessionStorage.length') == 0
+        page.screenshot(path=f'/tmp/galmanzip-real-transit-{"mobile" if mobile else "desktop"}.png')
+        print(f'실제 교통 자료·모의 장소 {"모바일(처리 속도 4배 제한)" if mobile else "데스크톱"}: 계산 {calculated:.1f}초, 전체 {time.monotonic() - started:.1f}초 검증 통과', flush=True)
+        context.close()
+    browser.close()

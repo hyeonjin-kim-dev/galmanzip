@@ -1,6 +1,6 @@
 export interface Point { lat: number; lng: number }
 export interface Place extends Point { id: string; name: string; address: string; url: string }
-export interface Stop extends Point { id: string; name: string }
+export interface Stop extends Point { id: string; name: string; mode?: 'bus' | 'rail' }
 export interface TransitLine {
   id: string
   name: string
@@ -8,13 +8,14 @@ export interface TransitLine {
   stops: string[]
   seconds: number[]
   waitSeconds: number
+  dwellSeconds?: number[]
   pickup?: boolean[]
   dropoff?: boolean[]
 }
 export interface TransitNetwork {
   version: 1
   status: 'ready'
-  source: { name: string; url: string; date: string; license: string }
+  source: { name: string; url: string; date: string; license: string; reference?: string }
   coverage: string
   stops: Stop[]
   lines: TransitLine[]

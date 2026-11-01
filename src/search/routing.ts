@@ -1,4 +1,5 @@
 import type { ApartmentResult, Place, Point, Reachability, ReachableStop, RouteLeg, TransitNetwork } from './types.ts'
+import { Edges } from './edges.ts'
 
 export const ACCESS_RADIUS = 600
 export const DESTINATION_RADIUS = 1000
@@ -52,7 +53,6 @@ export function walkingSeconds(metres: number): number {
   return Math.ceil(metres * 1.3 / 1.2)
 }
 
-interface Edge { from: number; to: number; seconds: number; boardings: number; leg?: RouteLeg }
 type QueueItem = { node: number; seconds: number; boardings: number }
 const precedes = (a: QueueItem, b: QueueItem) => a.seconds < b.seconds || (a.seconds === b.seconds && a.boardings < b.boardings)
 
@@ -108,13 +108,13 @@ export function validateNetwork(value: unknown): TransitNetwork {
       || !Array.isArray(line.seconds) || line.seconds.length !== line.stops.length - 1
       || line.seconds.some(time => !Number.isFinite(time) || time <= 0)
       || !Number.isFinite(line.waitSeconds) || line.waitSeconds < 0
+      || (line.dwellSeconds !== undefined && (!Array.isArray(line.dwellSeconds) || line.dwellSeconds.length !== line.stops.length
+        || line.dwellSeconds.some(time => !Number.isFinite(time) || time < 0)))
       || [line.pickup, line.dropoff].some(values => values !== undefined && (!Array.isArray(values)
         || values.length !== line.stops.length || values.some(value => typeof value !== 'boolean')))) throw new Error('노선 자료가 올바르지 않습니다.')
     lines.add(line.id)
   }
   for (const transfer of data.transfers) {
-    // 같은 정류장의 노선별 환승 제약은 공용 승하차 노드로 표현할 수 없다.
-    if (transfer.from === transfer.to && transfer.seconds > 0) throw new Error('동일 정류장 환승 제약을 표현할 수 있도록 교통 자료를 보완해야 합니다.')
     if (!ids.has(transfer.from) || !ids.has(transfer.to) || !Number.isFinite(transfer.seconds) || transfer.seconds < 0) {
       throw new Error('환승 자료가 올바르지 않습니다.')
     }
@@ -129,92 +129,120 @@ export function findReachableStops(network: TransitNetwork, destination: Point, 
   }
   const stops = network.stops
   const indices = new Map(stops.map((stop, index) => [stop.id, index]))
-  const reverse: Edge[][] = stops.map(() => [])
-  const add = (edge: Edge) => reverse[edge.to].push(edge)
-  for (const line of network.lines) {
-    const offset = reverse.length
-    line.stops.forEach(() => reverse.push([]))
+  const n = stops.length
+  const positions = network.lines.reduce((sum, line) => sum + line.stops.length, 0)
+  const nodes = n * 2 + positions * 2
+  const edges = new Edges(nodes, positions * 4 + n * 8)
+  const WALK = 0, WAIT = 1, RIDE = 2, ALIGHT = 3, DWELL = 4
+  const nodeStop = new Int32Array(nodes)
+  const nodeLine = new Int32Array(nodes).fill(-1)
+  const railStops = new Set<number>()
+  let offset = n * 2
+  stops.forEach((_, index) => { nodeStop[index] = index; nodeStop[n + index] = index })
+  network.lines.forEach((line, lineIndex) => {
     line.stops.forEach((id, index) => {
       const stopIndex = indices.get(id)!
-      const name = stops[stopIndex].name
-      if (line.pickup?.[index] !== false) add({ from: stopIndex, to: offset + index, seconds: line.waitSeconds, boardings: 1,
-        leg: { mode: 'wait', from: name, to: name, seconds: line.waitSeconds, line: line.name, lineId: line.id } })
-      if (line.dropoff?.[index] !== false) add({ from: offset + index, to: stopIndex, seconds: 0, boardings: 0 })
+      const arrival = offset + index * 2, departure = arrival + 1
+      nodeStop[arrival] = nodeStop[departure] = stopIndex
+      nodeLine[arrival] = nodeLine[departure] = lineIndex
+      if (line.mode === 'rail') railStops.add(stopIndex)
+      if (line.dropoff?.[index] !== false) edges.add(arrival, n + stopIndex, 0, ALIGHT)
       if (index + 1 < line.stops.length) {
-        add({ from: offset + index, to: offset + index + 1, seconds: line.seconds[index], boardings: 0,
-          leg: { mode: line.mode, from: name, to: stops[indices.get(line.stops[index + 1])!].name,
-            seconds: line.seconds[index], line: line.name, lineId: line.id } })
+        if (line.pickup?.[index] !== false) edges.add(stopIndex, departure, line.waitSeconds, WAIT)
+        edges.add(arrival, departure, line.dwellSeconds?.[index] ?? 0, DWELL)
+        edges.add(departure, arrival + 2, line.seconds[index], RIDE)
       }
     })
-  }
+    offset += line.stops.length * 2
+  })
   const specified = new Map(network.transfers.map(transfer => [`${transfer.from}\0${transfer.to}`, transfer.seconds]))
   for (const transfer of network.transfers) {
-    add({ from: indices.get(transfer.from)!, to: indices.get(transfer.to)!, seconds: transfer.seconds, boardings: 0,
-      leg: { mode: 'walk', from: stops[indices.get(transfer.from)!].name, to: stops[indices.get(transfer.to)!].name, seconds: transfer.seconds } })
+    edges.add(n + indices.get(transfer.from)!, indices.get(transfer.to)!, transfer.seconds, WALK)
+  }
+  for (let index = 0; index < n; index++) {
+    if (!specified.has(`${stops[index].id}\0${stops[index].id}`)) edges.add(n + index, index, 0, WALK)
   }
   // 작은 격자로 이웃 정류장만 비교해 전체 정류장 쌍의 비교를 피한다.
   const cells = new Map<string, number[]>()
   stops.forEach((stop, index) => {
     const key = `${Math.floor(stop.lat / 0.005)},${Math.floor(stop.lng / 0.005)}`
-    cells.set(key, [...(cells.get(key) ?? []), index])
+    const cell = cells.get(key) ?? []
+    cell.push(index)
+    cells.set(key, cell)
   })
   stops.forEach((stop, from) => {
     const y = Math.floor(stop.lat / 0.005), x = Math.floor(stop.lng / 0.005)
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       for (const to of cells.get(`${y + dy},${x + dx}`) ?? []) {
-        if (to === from || specified.has(`${stop.id}\0${stops[to].id}`)) continue
+        if (to === from || (railStops.has(from) && railStops.has(to)) || specified.has(`${stop.id}\0${stops[to].id}`)) continue
         const metres = distance(stop, stops[to])
         if (metres <= TRANSFER_RADIUS) {
           const seconds = walkingSeconds(metres)
-          add({ from, to, seconds, boardings: 0, leg: { mode: 'walk', from: stop.name, to: stops[to].name, seconds } })
+          edges.add(n + from, to, seconds, WALK)
         }
       }
     }
   })
-  const seconds = new Float64Array(reverse.length).fill(Infinity)
-  const boards = new Float64Array(reverse.length).fill(Infinity)
-  const next: (Edge | undefined)[] = new Array(reverse.length)
-  const tails = new Map<number, RouteLeg>()
+  const seconds = new Float64Array(nodes).fill(Infinity)
+  const boards = new Int32Array(nodes).fill(0x7fffffff)
+  const next = new Int32Array(nodes).fill(-1)
+  const tails = new Float64Array(n).fill(Infinity)
   const queue = new Queue()
   stops.forEach((stop, index) => {
     const metres = distance(stop, destination)
     if (metres > DESTINATION_RADIUS) return
     const time = walkingSeconds(metres)
-    seconds[index] = time
-    boards[index] = 0
-    tails.set(index, { mode: 'walk', from: stop.name, to: '목적지', seconds: time })
-    queue.push({ node: index, seconds: time, boardings: 0 })
+    seconds[n + index] = time
+    boards[n + index] = 0
+    tails[index] = time
+    queue.push({ node: n + index, seconds: time, boardings: 0 })
   })
   let current: QueueItem | undefined
   while ((current = queue.pop())) {
     if (current.seconds !== seconds[current.node] || current.boardings !== boards[current.node]) continue
     if (current.seconds > maxMinutes * 60) continue
-    for (const edge of reverse[current.node]) {
-      const time = current.seconds + edge.seconds, boardings = current.boardings + edge.boardings
-      if (time > maxMinutes * 60 || time > seconds[edge.from] || (time === seconds[edge.from] && boardings >= boards[edge.from])) continue
-      seconds[edge.from] = time
-      boards[edge.from] = boardings
-      next[edge.from] = edge
-      queue.push({ node: edge.from, seconds: time, boardings })
+    for (let edge = edges.heads[current.node]; edge >= 0; edge = edges.next[edge]) {
+      const from = edges.from[edge]
+      const time = current.seconds + edges.seconds[edge], boardings = current.boardings + (edges.kind[edge] === WAIT ? 1 : 0)
+      if (time > maxMinutes * 60 || time > seconds[from] || (time === seconds[from] && boardings >= boards[from])) continue
+      seconds[from] = time
+      boards[from] = boardings
+      next[from] = edge
+      queue.push({ node: from, seconds: time, boardings })
     }
   }
   const reachable: ReachableStop[] = []
   stops.forEach((stop, index) => {
+    // 도보만으로 도착하는 후보는 별도로 비교해 환승 도보를 연쇄 적용하지 않는다.
+    if (tails[index] <= seconds[index] && tails[index] <= maxMinutes * 60) {
+      reachable.push({ ...stop, seconds: tails[index], boardings: 0,
+        legs: [{ mode: 'walk', from: stop.name, to: '목적지', seconds: tails[index] }] })
+      return
+    }
     if (seconds[index] > maxMinutes * 60) return
     const legs: RouteLeg[] = []
     let node = index
-    while (next[node]) {
-      const edge = next[node]!
-      if (edge.leg) {
-        const previous = legs.at(-1)
-        if (previous && ['bus', 'rail'].includes(edge.leg.mode) && previous.lineId === edge.leg.lineId && previous.mode === edge.leg.mode) {
-          previous.to = edge.leg.to
-          previous.seconds += edge.leg.seconds
-        } else legs.push({ ...edge.leg })
+    while (next[node] >= 0) {
+      const edge = next[node], to = edges.to[edge], kind = edges.kind[edge]
+      const fromName = stops[nodeStop[node]].name, toName = stops[nodeStop[to]].name
+      let leg: RouteLeg | undefined
+      if (kind === WALK) leg = { mode: 'walk', from: fromName, to: toName, seconds: edges.seconds[edge] }
+      else if (kind !== ALIGHT) {
+        const line = network.lines[nodeLine[kind === WAIT ? to : node]]
+        leg = { mode: kind === WAIT ? 'wait' : line.mode, from: fromName, to: toName,
+          seconds: edges.seconds[edge], line: line.name, lineId: line.id }
       }
-      node = edge.to
+      if (leg) {
+        const previous = legs.at(-1)
+        if (previous && ['bus', 'rail'].includes(leg.mode) && previous.lineId === leg.lineId && previous.mode === leg.mode) {
+          previous.to = leg.to
+          previous.seconds += leg.seconds
+        } else legs.push(leg)
+      }
+      node = to
     }
-    if (tails.has(node)) legs.push(tails.get(node)!)
+    const lastStop = nodeStop[node]
+    legs.push({ mode: 'walk', from: stops[lastStop].name, to: '목적지', seconds: tails[lastStop] })
     reachable.push({ ...stop, seconds: seconds[index], boardings: boards[index], legs })
   })
   return { stops: reachable.sort((a, b) => a.seconds - b.seconds || a.boardings - b.boardings), source: network.source, coverage: network.coverage }
@@ -233,7 +261,7 @@ export function rankApartment(place: Place, destination: Place, stops: Reachable
     const walk = walkingSeconds(metres), seconds = walk + stop.seconds, transfers = Math.max(0, stop.boardings - 1)
     if (seconds > maxMinutes * 60) continue
     if (best && (best.seconds < seconds || (best.seconds === seconds && best.transfers <= transfers))) continue
-    best = { ...place, seconds, transfers, startStop: stop.name,
+    best = { ...place, seconds, transfers, startStop: stop.boardings ? stop.name : '도보 이동',
       legs: [{ mode: 'walk', from: place.name, to: stop.name, seconds: walk }, ...stop.legs] }
   }
   return best
