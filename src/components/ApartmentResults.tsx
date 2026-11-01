@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { TRANSIT_SEARCH_READY, TRANSIT_SETUP_MESSAGE } from '../search/search'
 import type { ApartmentResult, Place, RouteLeg, SearchSnapshot } from '../search/types'
 
 interface ApartmentResultsProps {
@@ -64,8 +65,10 @@ export default function ApartmentResults({ snapshot, destination, selectedId, on
   }, [selectedId, selectedIndex])
 
   if (snapshot.status === 'idle') return <div className="results-empty">
-    <p>어디까지 갈 수 있는 집일까요?</p>
-    <span>목적지를 목록에서 선택하고 소요 시간을 정해 주세요.</span>
+    {TRANSIT_SEARCH_READY ? <>
+      <p>어디까지 갈 수 있는 집일까요?</p>
+      <span>목적지를 목록에서 선택하고 소요 시간을 정해 주세요.</span>
+    </> : <p role="status">{TRANSIT_SETUP_MESSAGE}</p>}
   </div>
 
   return (
