@@ -40,7 +40,7 @@
     category_name: '부동산 > 주거시설 > 아파트', place_url: '', ...extra })
   state.destination = place('destination', '검증 목적지', 37.4, 127.16, { category_name: '교통 > 지하철역' })
   state.homes = [place('slow', '검증 느린 아파트', 37.43, 127.11), place('transfer', '검증 환승 아파트', 37.42, 127.1),
-    place('fast', '검증 직행 아파트', 37.4, 127.1), place('walk', '검증 도보 아파트', 37.4005, 127.16),
+    place('fast', '검증 직행 아파트', 37.4, 127.1), place('walk', '검증 도보 아파트', 37.4052, 127.16),
     place('far', '검증 시간초과 아파트', 37.5, 127.1), place('office', '검증 상가', 37.4, 127.1, { category_name: '부동산 > 상가' }),
     place('outside', '검증 지역외 아파트', 37.4, 127.1, { address_name: '부산 해운대구' })]
   function distance(a, b) {

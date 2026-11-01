@@ -6,7 +6,7 @@ import TravelTimeSelect from './TravelTimeSelect'
 
 interface DestinationSearchProps {
   busy: boolean
-  onSearch(destination: Place, minutes: number): void
+  onSearch(destination: Place, minMinutes: number, maxMinutes: number): void
   onReset(): void
   onCancel(): void
 }
@@ -14,7 +14,9 @@ interface DestinationSearchProps {
 export default function DestinationSearch({ busy, onSearch, onReset, onCancel }: DestinationSearchProps) {
   const [query, setQuery] = useState('')
   const [destination, setDestination] = useState<Place | null>(null)
-  const [minutes, setMinutes] = useState<number | null>(null)
+  const [minMinutes, setMinMinutes] = useState<number | null>(null)
+  const [maxMinutes, setMaxMinutes] = useState<number | null>(null)
+  const invalidRange = minMinutes !== null && maxMinutes !== null && minMinutes > maxMinutes
   const [places, setPlaces] = useState<Place[]>([])
   const [message, setMessage] = useState('')
   const [open, setOpen] = useState(false)
@@ -61,7 +63,7 @@ export default function DestinationSearch({ busy, onSearch, onReset, onCancel }:
   }
 
   const submit = () => {
-    if (destination && minutes !== null && !busy) onSearch(destination, minutes)
+    if (destination && minMinutes !== null && maxMinutes !== null && !invalidRange && !busy) onSearch(destination, minMinutes, maxMinutes)
   }
 
   const handleKey = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -119,11 +121,13 @@ export default function DestinationSearch({ busy, onSearch, onReset, onCancel }:
         )}
       </div>
       <div className="search-options">
-        <TravelTimeSelect value={minutes} onChange={value => { setMinutes(value); onReset() }} />
+        <TravelTimeSelect label="최소 소요 시간" value={minMinutes} onChange={value => { setMinMinutes(value); onReset() }} />
+        <TravelTimeSelect label="최대 소요 시간" value={maxMinutes} onChange={value => { setMaxMinutes(value); onReset() }} />
         {busy
           ? <button className="search-button" type="button" onClick={event => { event.preventDefault(); onCancel() }}>중단</button>
-          : <button className="search-button" type="button" disabled={!destination || minutes === null} onClick={submit}>검색</button>}
+          : <button className="search-button" type="button" disabled={!destination || minMinutes === null || maxMinutes === null || invalidRange} onClick={submit}>검색</button>}
       </div>
+      {invalidRange && <p className="time-range-error" role="alert">최대 소요 시간은 최소 소요 시간 이상으로 선택해 주세요.</p>}
     </div>
   )
 }

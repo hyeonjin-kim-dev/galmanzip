@@ -248,7 +248,7 @@ export function findReachableStops(network: TransitNetwork, destination: Point, 
   return { stops: reachable.sort((a, b) => a.seconds - b.seconds || a.boardings - b.boardings), source: network.source, coverage: network.coverage }
 }
 
-export function rankApartment(place: Place, destination: Place, stops: ReachableStop[], maxMinutes: number): ApartmentResult | null {
+export function rankApartment(place: Place, destination: Place, stops: ReachableStop[], maxMinutes: number, minMinutes = 0): ApartmentResult | null {
   let best: ApartmentResult | null = null
   const direct = distance(place, destination)
   if (direct <= DESTINATION_RADIUS && walkingSeconds(direct) <= maxMinutes * 60) {
@@ -264,7 +264,7 @@ export function rankApartment(place: Place, destination: Place, stops: Reachable
     best = { ...place, seconds, transfers, startStop: stop.boardings ? stop.name : '도보 이동',
       legs: [{ mode: 'walk', from: place.name, to: stop.name, seconds: walk }, ...stop.legs] }
   }
-  return best
+  return best && best.seconds >= minMinutes * 60 ? best : null
 }
 
 export const sortApartments = (results: ApartmentResult[]) => results.sort((a, b) =>

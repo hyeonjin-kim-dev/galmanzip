@@ -54,8 +54,12 @@ def choose(page, touch=False):
     else:
         field.press('ArrowDown')
         field.press('Enter')
-    page.get_by_role('combobox', name='소요 시간').click()
-    page.get_by_role('option', name='~ 약 30분', exact=True).click()
+    page.get_by_role('combobox', name='최소 소요 시간').click()
+    expect(page.get_by_role('listbox', name='최소 소요 시간').get_by_role('option')).to_have_count(18)
+    page.get_by_role('option', name='약 10분', exact=True).click()
+    page.get_by_role('combobox', name='최대 소요 시간').click()
+    expect(page.get_by_role('listbox', name='최대 소요 시간').get_by_role('option')).to_have_count(18)
+    page.get_by_role('option', name='약 30분', exact=True).click()
     expect(page.get_by_role('button', name='검색', exact=True)).to_be_enabled()
 
 
@@ -100,6 +104,29 @@ with sync_playwright() as p:
         assert not errors, errors
         context.close()
         print('모바일' if mobile else '데스크톱', '검색·정렬·페이지 조회·클러스터·경로·화면 크기 검증 통과')
+
+    context, page, errors = prepare(browser, mobile=True)
+    page.set_viewport_size(dict(width=320, height=700))
+    choose(page, touch=True)
+    minimum = page.get_by_role('combobox', name='최소 소요 시간')
+    minimum.press('End')
+    minimum.press('Enter')
+    expect(minimum).to_contain_text('약 3시간')
+    expect(page.get_by_role('alert')).to_contain_text('최대 소요 시간은 최소 소요 시간 이상')
+    expect(page.get_by_role('button', name='검색', exact=True)).to_be_disabled()
+    minimum.click()
+    page.get_by_role('option', name='약 20분', exact=True).click()
+    expect(page.get_by_role('alert')).to_have_count(0)
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+    page.locator('.sheet-handle').press('End')
+    page.wait_for_timeout(250)
+    assert page.locator('.map-panel').bounding_box()['y'] >= page.locator('.destination-search').bounding_box()['y'] + page.locator('.destination-search').bounding_box()['height']
+    page.get_by_role('button', name='검색', exact=True).click()
+    expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
+    expect(page.locator('.apartment-card')).to_have_count(0)
+    assert not errors, errors
+    context.close()
+    print('시간 범위 오류·키보드 끝 항목·최소 시간 필터·작은 모바일 화면 검증 통과')
 
     context, page, errors = prepare(browser, network=dict(version=1, status='pending'))
     choose(page)
@@ -169,8 +196,8 @@ with sync_playwright() as p:
         expect(page.locator('.results-basis')).to_contain_text('2025년 3월 평일 하루', timeout=30000)
         calculated = time.monotonic() - started
         expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=90000)
-        expect(page.locator('.apartment-card')).to_have_count(2)
-        expect(page.locator('.test-cluster')).to_have_text('2')
+        expect(page.locator('.apartment-card')).to_have_count(1)
+        expect(page.locator('.test-cluster')).to_have_text('1')
         page.locator('[data-place-id="fast"] summary').click()
         expect(page.locator('[data-place-id="fast"] .route-details')).to_contain_text('정자역 → 서현역.AK플라자')
         assert len(compressed) == 1, compressed

@@ -72,6 +72,13 @@ test('승차 불가·하차 불가 정류장에서 이용할 수 없는 경로�
   assert.equal(findReachableStops(network([noDropoff]), destination, 30).stops.some(stop => stop.id === 'A'), false)
 })
 
+test('최소 시간 경계는 포함하고 더 빠른 아파트에 우회 경로를 붙여 포함하지 않는다', () => {
+  const reachable = findReachableStops(network(), destination, 30)
+  assert.equal(rankApartment(apartment, destination, reachable.stops, 30, 12)?.seconds, 720)
+  assert.equal(rankApartment(apartment, destination, reachable.stops, 30, 13), null)
+  assert.equal(rankApartment(destination, destination, reachable.stops, 30, 10), null)
+})
+
 test('동일 역·순환 노선에서도 무한 순환 없이 경로를 복원한다', () => {
   const graph = network([line('순환', ['A', 'B', 'A', 'C'], [100, 100, 300], 0)])
   const result = findReachableStops(graph, destination, 30).stops.find(stop => stop.id === 'A')!

@@ -18,6 +18,18 @@ export default function MapPanel({ onHeightChange, search, children, searchVersi
   const [position, setPosition] = useState<SheetPosition>('half')
   const [dragHeight, setDragHeight] = useState<number | null>(null)
 
+  useLayoutEffect(() => {
+    const panel = panelRef.current
+    const search = panel?.querySelector<HTMLElement>('.destination-search')
+    const page = panel?.parentElement
+    if (!search || !page) return
+    const measure = () => page.style.setProperty('--search-height', `${search.getBoundingClientRect().height}px`)
+    const observer = new ResizeObserver(measure)
+    observer.observe(search)
+    measure()
+    return () => { observer.disconnect(); page.style.removeProperty('--search-height') }
+  }, [])
+
   useEffect(() => {
     if (searchVersion) setPosition(current => current === 'collapsed' ? 'half' : current)
   }, [searchVersion])

@@ -1,21 +1,21 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 
-const travelTimes = [
-  { minutes: 30, label: '~ 약 30분' },
-  { minutes: 60, label: '~ 약 1시간' },
-  { minutes: 90, label: '~ 약 1시간 30분' },
-  { minutes: 120, label: '~ 약 2시간' },
-  { minutes: 150, label: '~ 약 2시간 30분' },
-  { minutes: 180, label: '~ 약 3시간' },
-]
+const travelTimes = Array.from({ length: 18 }, (_, index) => {
+  const minutes = (index + 1) * 10
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+  const label = hours ? `${hours}시간${remainder ? ` ${remainder}분` : ''}` : `${minutes}분`
+  return { minutes, label: `약 ${label}` }
+})
 
 interface TravelTimeSelectProps {
+  label: string
   value: number | null
   onChange(minutes: number): void
 }
 
-export default function TravelTimeSelect({ value: minutes, onChange }: TravelTimeSelectProps) {
+export default function TravelTimeSelect({ label, value: minutes, onChange }: TravelTimeSelectProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
@@ -146,13 +146,13 @@ export default function TravelTimeSelect({ value: minutes, onChange }: TravelTim
         }
       }}
     >
-      <input type="hidden" name="travelTime" value={minutes ?? ''} />
+      <input type="hidden" name={label} value={minutes ?? ''} />
       <button
         ref={triggerRef}
         className="travel-time-select"
         type="button"
         role="combobox"
-        aria-label="소요 시간"
+        aria-label={label}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
@@ -162,7 +162,7 @@ export default function TravelTimeSelect({ value: minutes, onChange }: TravelTim
         onKeyDown={handleKeyDown}
       >
         <span className="travel-time-label">
-          {selectedIndex >= 0 ? travelTimes[selectedIndex].label : '소요 시간'}
+          {selectedIndex >= 0 ? travelTimes[selectedIndex].label : label}
         </span>
         {travelTimes.map((option) => (
           <span key={option.minutes} className="travel-time-size" aria-hidden="true">
@@ -179,7 +179,7 @@ export default function TravelTimeSelect({ value: minutes, onChange }: TravelTim
           id={listId}
           className="travel-time-list"
           role="listbox"
-          aria-label="소요 시간"
+          aria-label={label}
           data-placement={layout.side}
           style={{ maxHeight: layout.maxHeight }}
           onPointerDown={(event) => event.preventDefault()}

@@ -26,7 +26,7 @@ export default function App() {
     setSelectedId(null)
   }
 
-  const search = async (place: Place, minutes: number) => {
+  const search = async (place: Place, minMinutes: number, maxMinutes: number) => {
     searchRef.current?.abort()
     const controller = new AbortController()
     searchRef.current = controller
@@ -35,7 +35,7 @@ export default function App() {
     setSearchVersion(version => version + 1)
     setSnapshot({ ...emptySearch, status: 'loading', message: '목적지까지 도달 가능한 경로를 계산하고 있습니다.' })
     try {
-      await searchApartments(place, minutes, controller.signal, next => {
+      await searchApartments(place, minMinutes, maxMinutes, controller.signal, next => {
         if (!controller.signal.aborted) setSnapshot(next)
       })
     } catch (error) {

@@ -132,6 +132,7 @@ textarea {
 
 .search-options {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
@@ -405,7 +406,7 @@ summary { cursor: pointer; }
   .map-viewport {
     grid-column: 1;
     grid-row: 1;
-    height: calc(100% - min(var(--sheet-height), 100% - 106px - env(safe-area-inset-top, 0px)));
+    height: calc(100% - min(var(--sheet-height), 100% - var(--search-height, 74px) - 32px - env(safe-area-inset-top, 0px)));
     transition: height 180ms ease;
   }
 
@@ -414,7 +415,7 @@ summary { cursor: pointer; }
     inset: auto 0 0;
     height: var(--sheet-height);
     min-height: 72px;
-    max-height: calc(100% - 106px - env(safe-area-inset-top, 0px));
+    max-height: calc(100% - var(--search-height, 74px) - 32px - env(safe-area-inset-top, 0px));
     border: 0;
     border-radius: 20px 20px 0 0;
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -476,3 +477,5 @@ summary { cursor: pointer; }
     transition: none;
   }
 }
+
+.time-range-error { margin: 0; color: #9e2929; font-size: 13px; }

@@ -25,8 +25,9 @@ function reachability(destination: Place, minutes: number, signal: AbortSignal):
   })
 }
 
-export async function searchApartments(destination: Place, minutes: number, signal: AbortSignal, update: (snapshot: SearchSnapshot) => void) {
-  const graph = await reachability(destination, minutes, signal)
+export async function searchApartments(destination: Place, minMinutes: number, maxMinutes: number, signal: AbortSignal, update: (snapshot: SearchSnapshot) => void) {
+  if (!Number.isFinite(minMinutes) || minMinutes < 0 || minMinutes > maxMinutes) throw new Error('최소·최대 소요 시간을 확인해 주세요.')
+  const graph = await reachability(destination, maxMinutes, signal)
   signal.throwIfAborted()
   if (!graph.stops.length) throw new Error('목적지 주변에서 지원하는 정류장을 찾지 못했습니다. 다른 목적지를 선택해 주세요.')
   const zones = searchZones(graph.stops)
@@ -53,7 +54,7 @@ export async function searchApartments(destination: Place, minutes: number, sign
         for (const data of response.data) {
           if (!/아파트\s*$/.test(data.category_name) || !inServiceArea(data.address_name) || places.has(data.id)) continue
           const place = toPlace(data)
-          if (place) places.set(place.id, rankApartment(place, destination, nearbyStops(place), minutes))
+          if (place) places.set(place.id, rankApartment(place, destination, nearbyStops(place), maxMinutes, minMinutes))
         }
         if (!response.more || page === 45) {
           if (response.more || response.total > received) limited = true
