@@ -1,6 +1,6 @@
 // 브라우저 검증 전용 SDK 대역이다. 이 파일과 가상 장소는 배포에 포함하지 않는다.
 (() => {
-  const state = window.__searchTest = { calls: [], markers: [], failAfter: Infinity, delay: 10, clusterOptions: null }
+  const state = window.__searchTest = { calls: [], markers: [], createdMarkers: 0, failAfter: Infinity, delay: 10, pageSize: 2, cappedTotal: false, clusterOptions: null }
   class LatLng {
     constructor(lat, lng) { this.lat = lat; this.lng = lng }
     getLat() { return this.lat }
@@ -16,7 +16,7 @@
     setLevel(level) { state.level = level }
   }
   class LatLngBounds { extend() {} }
-  class Marker { constructor(options) { this.options = options } setMap() {} }
+  class Marker { constructor(options) { this.options = options; state.createdMarkers++ } setMap() {} }
   class CustomOverlay {
     constructor(options) { this.content = options.content }
     setMap(map) { if (map) map.container.append(this.content); else this.content.remove() }
@@ -25,13 +25,14 @@
     constructor(options) { this.options = options; state.clusterOptions = options; state.clusterer = this }
     clear() { state.markers = []; this.element?.remove() }
     addMarkers(markers) {
-      state.markers = markers
-      if (!markers.length) return
+      state.markers.push(...markers)
+      this.element?.remove()
+      if (!state.markers.length) return
       const element = this.element = document.createElement('button')
       element.className = 'test-cluster'
-      element.textContent = this.options.texts(markers.length)
+      element.textContent = this.options.texts(state.markers.length)
       Object.assign(element.style, this.options.styles[0], { position: 'absolute', top: '45%', left: '45%' })
-      element.onclick = () => this.listener?.({ getMarkers: () => markers, getBounds: () => new LatLngBounds() })
+      element.onclick = () => this.listener?.({ getMarkers: () => state.markers, getBounds: () => new LatLngBounds() })
       this.options.map.container.append(element)
     }
   }
@@ -49,15 +50,19 @@
   }
   class Places {
     keywordSearch(query, callback, options) {
-      state.calls.push({ query, page: options.page })
+      state.calls.push({ query, page: options.page, rect: options.rect, started: performance.now() })
       const failed = state.calls.filter(call => call.query === '아파트').length > state.failAfter
       setTimeout(() => {
         if (query !== '아파트') { callback([state.destination], 'OK', { hasNextPage: false, totalCount: 1 }); return }
         if (failed) { callback([], 'ERROR', {}); return }
-        const all = state.homes.filter(home => distance(options.location, { lat: Number(home.y), lng: Number(home.x) }) <= options.radius)
-        const offset = (options.page - 1) * 2
-        const data = all.slice(offset, offset + 2)
-        callback(data, data.length ? 'OK' : 'ZERO_RESULT', { hasNextPage: offset + 2 < all.length, totalCount: all.length })
+        const bounds = options.rect?.split(',').map(Number)
+        const all = state.homes.filter(home => bounds
+          ? Number(home.x) >= bounds[0] && Number(home.y) >= bounds[1] && Number(home.x) <= bounds[2] && Number(home.y) <= bounds[3]
+          : distance(options.location, { lat: Number(home.y), lng: Number(home.x) }) <= options.radius)
+        const visible = all.slice(0, 45), offset = (options.page - 1) * state.pageSize
+        const data = visible.slice(offset, offset + state.pageSize)
+        callback(data, data.length ? 'OK' : 'ZERO_RESULT', { hasNextPage: offset + state.pageSize < visible.length,
+          totalCount: state.cappedTotal ? visible.length : all.length })
       }, state.delay)
     }
   }

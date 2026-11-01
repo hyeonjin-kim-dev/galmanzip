@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import type { ApartmentResult, Place, RouteLeg, SearchSnapshot } from '../search/types'
 
 interface ApartmentResultsProps {
@@ -15,17 +15,17 @@ const describeLeg = (leg: RouteLeg) => {
   return `${leg.line} · ${leg.from} → ${leg.to}`
 }
 
-function ApartmentCard({ apartment, destination, selected, onSelect }: {
+const ApartmentCard = memo(function ApartmentCard({ apartment, destination, selected, onSelect }: {
   apartment: ApartmentResult
   destination: Place
   selected: boolean
-  onSelect(): void
+  onSelect(id: string): void
 }) {
   const [copyMessage, setCopyMessage] = useState('')
   const routeUrl = `https://map.kakao.com/link/by/traffic/${encodeURIComponent(apartment.name)},${apartment.lat},${apartment.lng}/${encodeURIComponent(destination.name)},${destination.lat},${destination.lng}`
   return (
     <li className="apartment-card" data-selected={selected} data-place-id={apartment.id}>
-      <button className="apartment-heading" type="button" aria-pressed={selected} onClick={onSelect}>
+      <button className="apartment-heading" type="button" aria-pressed={selected} onClick={() => onSelect(apartment.id)}>
         <strong>{apartment.name}</strong>
         <span className="apartment-time">약 {minutes(apartment.seconds)}분 <span>· 환승 {apartment.transfers}회</span></span>
         <span className="visually-hidden">지도에서 보기</span>
@@ -52,7 +52,7 @@ function ApartmentCard({ apartment, destination, selected, onSelect }: {
       {copyMessage && <p className="copy-message" role="status">{copyMessage}</p>}
     </li>
   )
-}
+})
 
 export default function ApartmentResults({ snapshot, destination, selectedId, onSelect }: ApartmentResultsProps) {
   const [visibleCount, setVisibleCount] = useState(50)
@@ -95,7 +95,7 @@ export default function ApartmentResults({ snapshot, destination, selectedId, on
       </div>
       {destination && <ol className="apartment-list" ref={listRef}>
         {snapshot.results.slice(0, shown).map(apartment => <ApartmentCard key={apartment.id} apartment={apartment}
-          destination={destination} selected={selectedId === apartment.id} onSelect={() => onSelect(apartment.id)} />)}
+          destination={destination} selected={selectedId === apartment.id} onSelect={onSelect} />)}
       </ol>}
       {shown < snapshot.results.length && <button className="results-more" type="button" onClick={() => setVisibleCount(shown + 50)}>아파트 더 보기</button>}
     </section>

@@ -20,7 +20,7 @@ export interface PlaceData {
   x: string; y: string; place_url: string; category_name: string
 }
 export interface PlacePage { hasNextPage: boolean; totalCount: number }
-export interface PlaceOptions { location?: MapPosition; radius?: number; page?: number; size?: number; sort?: string }
+export interface PlaceOptions { rect?: string; page?: number; size?: number }
 export interface MapsSdk {
   load(callback: () => void): void
   LatLng: new (latitude: number, longitude: number) => MapPosition

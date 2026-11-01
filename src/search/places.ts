@@ -1,6 +1,7 @@
 import { loadAppMaps } from '../lib/kakaoMaps'
 import type { PlaceData } from '../lib/kakaoMaps'
-import type { Place, Point } from './types'
+import type { Place } from './types'
+import type { Bounds } from './zones'
 
 export const inServiceArea = (address: string) => /^(서울(?:특별시)?|경기(?:도)?)\s/.test(address)
 export function toPlace(data: PlaceData): Place | null {
@@ -10,7 +11,7 @@ export function toPlace(data: PlaceData): Place | null {
     lat, lng, url: `https://place.map.kakao.com/${encodeURIComponent(data.id)}` }
 }
 
-export async function queryPlaces(query: string, signal: AbortSignal, point?: Point, radius?: number, page = 1) {
+export async function queryPlaces(query: string, signal: AbortSignal, bounds?: Bounds, page = 1) {
   signal.throwIfAborted()
   const maps = await loadAppMaps()
   signal.throwIfAborted()
@@ -32,7 +33,7 @@ export async function queryPlaces(query: string, signal: AbortSignal, point?: Po
         if (status === maps.services.Status.ZERO_RESULT) finish(undefined, { data: [], more: false, total: 0 })
         else if (status !== maps.services.Status.OK) finish(new Error('장소 검색을 완료하지 못했습니다. 이용 한도 또는 연결 상태를 확인해 주세요.'))
         else finish(undefined, { data, more: pagination.hasNextPage, total: pagination.totalCount })
-      }, { page, size: 15, ...(point ? { location: new maps.LatLng(point.lat, point.lng), radius, sort: maps.services.SortBy.DISTANCE } : {}) })
+      }, { page, size: 15, ...(bounds ? { rect: `${bounds.west},${bounds.south},${bounds.east},${bounds.north}` } : {}) })
     } catch { finish(new Error('장소 검색을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.')) }
   })
 }

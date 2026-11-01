@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "benchmark:routing": "node --experimental-strip-types scripts/benchmark-routing.ts",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },

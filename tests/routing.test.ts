@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ACCESS_RADIUS, distance, findReachableStops, indexStops, rankApartment, searchZones, sortApartments, validateNetwork, walkingSeconds } from '../src/search/routing.ts'
+import { distance, createRouter, findReachableStops, indexStops, rankApartment, sortApartments, validateNetwork, walkingSeconds } from '../src/search/routing.ts'
 import type { Place, TransitLine, TransitNetwork } from '../src/search/types.ts'
 
 // 실제 서비스 자료와 분리된, 방향·환승·시간 경계를 검증하기 위한 작은 교통망이다.
@@ -92,13 +92,6 @@ test('최종 목록은 환승 없음, 총시간, 환승 횟수 순으로 정렬�
   assert.deepEqual(sorted.map(item => item.id), ['b', 'c', 'a'])
 })
 
-test('합친 검색 구역도 각 정류장의 아파트 접근 반경을 모두 포함한다', () => {
-  const nearby = [...stops, { ...stops[0], lat: 37.405, lng: 127.105 }]
-  const zones = searchZones(nearby)
-  assert.ok(zones.length < nearby.length)
-  for (const stop of nearby) assert.ok(zones.some(zone => distance(zone, stop) + ACCESS_RADIUS <= zone.radius))
-})
-
 test('공간 색인 경계에서도 접근 가능한 정류장을 빠뜨리지 않는다', () => {
   const reachable = findReachableStops(network(), destination, 30).stops
   const home = { ...apartment, lng: 127.0999 }
@@ -185,4 +178,15 @@ test('조금 더 걸어가는 정류장의 무환승도 가까운 정류장의 �
   const result = rankApartment(apartment, destination, findReachableStops(graph, destination, 30).stops, 30)!
   assert.equal(result.transfers, 0)
   assert.equal(result.startStop, '조금 먼 정류장')
+})
+
+
+test('준비한 교통망을 재사용해도 이전 목적지와 시간 조건이 다음 결과에 섞이지 않는다', () => {
+  const graph = network([line('직행', ['A', 'C'], [700]), line('첫차', ['A', 'B'], [200]), line('둘째차', ['B', 'C'], [200])])
+  const route = createRouter(graph)
+  const first = route(destination, 30)
+  assert.deepEqual(first, findReachableStops(graph, destination, 30))
+  assert.deepEqual(route(stops[0], 10), findReachableStops(graph, stops[0], 10))
+  assert.deepEqual(route(destination, 10), findReachableStops(graph, destination, 10))
+  assert.deepEqual(route(destination, 30), first)
 })

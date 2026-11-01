@@ -5,20 +5,6 @@ export const ACCESS_RADIUS = 600
 export const DESTINATION_RADIUS = 1000
 export const TRANSFER_RADIUS = 250
 
-export function searchZones(stops: Point[]): (Point & { radius: number })[] {
-  const grid = 0.01
-  const zones = new Map<string, Point & { radius: number }>()
-  for (const stop of stops) {
-    const y = Math.floor(stop.lat / grid), x = Math.floor(stop.lng / grid)
-    const key = `${y},${x}`
-    const zone = zones.get(key) ?? { lat: (y + 0.5) * grid, lng: (x + 0.5) * grid, radius: 0 }
-    // 한 격자에 속한 모든 정류장의 접근 반경을 포함해 중복 API 호출을 줄인다.
-    zone.radius = Math.max(zone.radius, Math.ceil(distance(zone, stop) + ACCESS_RADIUS))
-    zones.set(key, zone)
-  }
-  return [...zones.values()]
-}
-
 export function indexStops(stops: ReachableStop[]) {
   const grid = 0.01
   const cells = new Map<string, ReachableStop[]>()
@@ -122,13 +108,8 @@ export function validateNetwork(value: unknown): TransitNetwork {
   return data
 }
 
-export function findReachableStops(network: TransitNetwork, destination: Point, maxMinutes: number): Reachability {
-  if (!Number.isFinite(maxMinutes) || maxMinutes <= 0 || maxMinutes > 180) throw new Error('소요시간을 확인해 주세요.')
-  if (!Number.isFinite(destination.lat) || !Number.isFinite(destination.lng) || Math.abs(destination.lat) > 90 || Math.abs(destination.lng) > 180) {
-    throw new Error('목적지 좌표를 확인해 주세요.')
-  }
-  // 환승 탐색 전에 전체 운행 패턴에서 직통 경로부터 확인한다.
-  const direct = directStops(network, destination, maxMinutes)
+// 목적지와 무관한 교통망 연결은 한 번 준비하고 탐색 배열만 초기화한다.
+export function createRouter(network: TransitNetwork) {
   const stops = network.stops
   const indices = new Map(stops.map((stop, index) => [stop.id, index]))
   const n = stops.length
@@ -185,75 +166,91 @@ export function findReachableStops(network: TransitNetwork, destination: Point, 
       }
     }
   })
-  const seconds = new Float64Array(nodes).fill(Infinity)
-  const boards = new Int32Array(nodes).fill(0x7fffffff)
-  const next = new Int32Array(nodes).fill(-1)
-  const tails = new Float64Array(n).fill(Infinity)
-  const queue = new Queue()
-  stops.forEach((stop, index) => {
-    const metres = distance(stop, destination)
-    if (metres > DESTINATION_RADIUS) return
-    const time = walkingSeconds(metres)
-    seconds[n + index] = time
-    boards[n + index] = 0
-    tails[index] = time
-    queue.push({ node: n + index, seconds: time, boardings: 0 })
-  })
-  let current: QueueItem | undefined
-  while ((current = queue.pop())) {
-    if (current.seconds !== seconds[current.node] || current.boardings !== boards[current.node]) continue
-    if (current.seconds > maxMinutes * 60) continue
-    for (let edge = edges.heads[current.node]; edge >= 0; edge = edges.next[edge]) {
-      const from = edges.from[edge]
-      const time = current.seconds + edges.seconds[edge], boardings = current.boardings + (edges.kind[edge] === WAIT ? 1 : 0)
-      if (time > maxMinutes * 60 || time > seconds[from] || (time === seconds[from] && boardings >= boards[from])) continue
-      seconds[from] = time
-      boards[from] = boardings
-      next[from] = edge
-      queue.push({ node: from, seconds: time, boardings })
+  const seconds = new Float64Array(nodes)
+  const boards = new Int32Array(nodes)
+  const next = new Int32Array(nodes)
+  const tails = new Float64Array(n)
+  return (destination: Point, maxMinutes: number): Reachability => {
+    if (!Number.isFinite(maxMinutes) || maxMinutes <= 0 || maxMinutes > 180) throw new Error('소요시간을 확인해 주세요.')
+    if (!Number.isFinite(destination.lat) || !Number.isFinite(destination.lng) || Math.abs(destination.lat) > 90 || Math.abs(destination.lng) > 180) {
+      throw new Error('목적지 좌표를 확인해 주세요.')
     }
-  }
-  const reachable: ReachableStop[] = []
-  stops.forEach((stop, index) => {
-    // 도보만으로 도착하는 후보는 별도로 비교해 환승 도보를 연쇄 적용하지 않는다.
-    if (tails[index] <= seconds[index] && tails[index] <= maxMinutes * 60) {
-      reachable.push({ ...stop, seconds: tails[index], boardings: 0,
-        legs: [{ mode: 'walk', from: stop.name, to: '목적지', seconds: tails[index] }] })
-      return
-    }
-    if (seconds[index] > maxMinutes * 60) return
-    const legs: RouteLeg[] = []
-    let node = index
-    while (next[node] >= 0) {
-      const edge = next[node], to = edges.to[edge], kind = edges.kind[edge]
-      const fromName = stops[nodeStop[node]].name, toName = stops[nodeStop[to]].name
-      let leg: RouteLeg | undefined
-      if (kind === WALK) leg = { mode: 'walk', from: fromName, to: toName, seconds: edges.seconds[edge] }
-      else if (kind !== ALIGHT) {
-        const line = network.lines[nodeLine[kind === WAIT ? to : node]]
-        leg = { mode: kind === WAIT ? 'wait' : line.mode, from: fromName, to: toName,
-          seconds: edges.seconds[edge], line: line.name, lineId: line.id }
+    // 최단시간 탐색에서 밀려나지 않도록 무환승을 먼저 확인한다.
+    const direct = directStops(network, destination, maxMinutes)
+    seconds.fill(Infinity)
+    boards.fill(0x7fffffff)
+    next.fill(-1)
+    tails.fill(Infinity)
+    const queue = new Queue()
+    stops.forEach((stop, index) => {
+      const metres = distance(stop, destination)
+      if (metres > DESTINATION_RADIUS) return
+      const time = walkingSeconds(metres)
+      seconds[n + index] = time
+      boards[n + index] = 0
+      tails[index] = time
+      queue.push({ node: n + index, seconds: time, boardings: 0 })
+    })
+    let current: QueueItem | undefined
+    while ((current = queue.pop())) {
+      if (current.seconds !== seconds[current.node] || current.boardings !== boards[current.node]) continue
+      if (current.seconds > maxMinutes * 60) continue
+      for (let edge = edges.heads[current.node]; edge >= 0; edge = edges.next[edge]) {
+        const from = edges.from[edge]
+        const time = current.seconds + edges.seconds[edge], boardings = current.boardings + (edges.kind[edge] === WAIT ? 1 : 0)
+        if (time > maxMinutes * 60 || time > seconds[from] || (time === seconds[from] && boardings >= boards[from])) continue
+        seconds[from] = time
+        boards[from] = boardings
+        next[from] = edge
+        queue.push({ node: from, seconds: time, boardings })
       }
-      if (leg) {
-        const previous = legs.at(-1)
-        if (previous && ['bus', 'rail'].includes(leg.mode) && previous.lineId === leg.lineId && previous.mode === leg.mode) {
-          previous.to = leg.to
-          previous.seconds += leg.seconds
-        } else legs.push(leg)
-      }
-      node = to
     }
-    const lastStop = nodeStop[node]
-    legs.push({ mode: 'walk', from: stops[lastStop].name, to: '목적지', seconds: tails[lastStop] })
-    reachable.push({ ...stop, seconds: seconds[index], boardings: boards[index], legs })
-  })
-  // 최단시간 탐색에서 밀려난 무환승 경로를 별도로 보존한다.
-  const fastest = new Map(reachable.map(stop => [stop.id, stop]))
-  for (const route of direct) {
-    const other = fastest.get(route.id)
-    if (!other || other.boardings > 1 || route.seconds < other.seconds) reachable.push(route)
+    const reachable: ReachableStop[] = []
+    stops.forEach((stop, index) => {
+      // 도보만으로 도착하는 후보는 별도로 비교해 환승 도보를 연쇄 적용하지 않는다.
+      if (tails[index] <= seconds[index] && tails[index] <= maxMinutes * 60) {
+        reachable.push({ ...stop, seconds: tails[index], boardings: 0,
+          legs: [{ mode: 'walk', from: stop.name, to: '목적지', seconds: tails[index] }] })
+        return
+      }
+      if (seconds[index] > maxMinutes * 60) return
+      const legs: RouteLeg[] = []
+      let node = index
+      while (next[node] >= 0) {
+        const edge = next[node], to = edges.to[edge], kind = edges.kind[edge]
+        const fromName = stops[nodeStop[node]].name, toName = stops[nodeStop[to]].name
+        let leg: RouteLeg | undefined
+        if (kind === WALK) leg = { mode: 'walk', from: fromName, to: toName, seconds: edges.seconds[edge] }
+        else if (kind !== ALIGHT) {
+          const line = network.lines[nodeLine[kind === WAIT ? to : node]]
+          leg = { mode: kind === WAIT ? 'wait' : line.mode, from: fromName, to: toName,
+            seconds: edges.seconds[edge], line: line.name, lineId: line.id }
+        }
+        if (leg) {
+          const previous = legs.at(-1)
+          if (previous && ['bus', 'rail'].includes(leg.mode) && previous.lineId === leg.lineId && previous.mode === leg.mode) {
+            previous.to = leg.to
+            previous.seconds += leg.seconds
+          } else legs.push(leg)
+        }
+        node = to
+      }
+      const lastStop = nodeStop[node]
+      legs.push({ mode: 'walk', from: stops[lastStop].name, to: '목적지', seconds: tails[lastStop] })
+      reachable.push({ ...stop, seconds: seconds[index], boardings: boards[index], legs })
+    })
+    // 최단시간 탐색에서 밀려난 무환승 경로를 별도로 보존한다.
+    const fastest = new Map(reachable.map(stop => [stop.id, stop]))
+    for (const route of direct) {
+      const other = fastest.get(route.id)
+      if (!other || other.boardings > 1 || route.seconds < other.seconds) reachable.push(route)
+    }
+    return { stops: reachable.sort((a, b) => a.seconds - b.seconds || a.boardings - b.boardings), source: network.source, coverage: network.coverage }
   }
-  return { stops: reachable.sort((a, b) => a.seconds - b.seconds || a.boardings - b.boardings), source: network.source, coverage: network.coverage }
+}
+
+export function findReachableStops(network: TransitNetwork, destination: Point, maxMinutes: number): Reachability {
+  return createRouter(network)(destination, maxMinutes)
 }
 
 export function directStops(network: TransitNetwork, destination: Point, maxMinutes: number): ReachableStop[] {

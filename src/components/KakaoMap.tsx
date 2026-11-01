@@ -21,6 +21,7 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
   const [context, setContext] = useState<{ maps: MapsSdk; map: MapInstance } | null>(null)
   const clustererRef = useRef<InstanceType<MapsSdk['MarkerClusterer']> | null>(null)
   const markerIdsRef = useRef(new Map<MapMarker, string>())
+  const markersRef = useRef(new Map<string, MapMarker>())
   const fittedRef = useRef(false)
 
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
       clusterer.clear()
       clustererRef.current = null
       markerIdsRef.current.clear()
+      markersRef.current.clear()
     }
   }, [context, onSelect])
 
@@ -111,18 +113,25 @@ export default function KakaoMap({ results, destination, selectedId, fitResults,
     const clusterer = clustererRef.current
     if (!context || !clusterer) return
     const { maps, map } = context
-    clusterer.clear()
-    markerIdsRef.current.clear()
-    const bounds = new maps.LatLngBounds()
-    const markers = results.map(result => {
+    const ids = new Set(results.map(result => result.id))
+    if ([...markersRef.current.keys()].some(id => !ids.has(id))) {
+      clusterer.clear()
+      markerIdsRef.current.clear()
+      markersRef.current.clear()
+    }
+    const added: MapMarker[] = []
+    for (const result of results) {
+      if (markersRef.current.has(result.id)) continue
       const position = new maps.LatLng(result.lat, result.lng)
-      bounds.extend(position)
       const marker = new maps.Marker({ position, title: result.name })
       markerIdsRef.current.set(marker, result.id)
-      return marker
-    })
-    clusterer.addMarkers(markers)
+      markersRef.current.set(result.id, marker)
+      added.push(marker)
+    }
+    if (added.length) clusterer.addMarkers(added)
     if (results.length && (!fittedRef.current || fitResults)) {
+      const bounds = new maps.LatLngBounds()
+      for (const result of results) bounds.extend(new maps.LatLng(result.lat, result.lng))
       if (destination) bounds.extend(new maps.LatLng(destination.lat, destination.lng))
       map.setBounds(bounds, 110, 48, 48, 48)
       fittedRef.current = true
