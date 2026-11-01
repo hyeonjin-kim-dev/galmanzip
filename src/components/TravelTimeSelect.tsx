@@ -1,12 +1,15 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 
-const travelTimes = Array.from({ length: 18 }, (_, index) => {
-  const minutes = (index + 1) * 10
+const formatTime = (minutes: number) => {
   const hours = Math.floor(minutes / 60)
   const remainder = minutes % 60
-  const label = hours ? `${hours}시간${remainder ? ` ${remainder}분` : ''}` : `${minutes}분`
-  return { minutes, label: `약 ${label}` }
+  return hours ? `${hours}시간${remainder ? ` ${remainder}분` : ''}` : `${minutes}분`
+}
+
+const travelTimes = Array.from({ length: 18 }, (_, index) => {
+  const minutes = (index + 1) * 10
+  return { minutes, label: index === 0 ? '0~10분' : `${formatTime(minutes - 10)} ~ ${formatTime(minutes)}` }
 })
 
 interface TravelTimeSelectProps {
