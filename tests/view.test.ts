@@ -9,7 +9,7 @@ const apartment = (id: string, seconds: number, lng = 127.1): ApartmentResult =>
 const snapshot = (results: ApartmentResult[], status: SearchSnapshot['status'] = 'loading'): SearchSnapshot =>
   ({ ...initialView.snapshot, results, status })
 
-test('더 빠른 결과가 늦게 도착해도 읽던 목록 앞에 끼워 넣지 않는다', () => {
+test('같은 환승 분류의 더 빠른 결과가 늦게 도착해도 기존 순서를 보존한다', () => {
   const a = apartment('먼저', 1200), b = apartment('나중', 600)
   let view = viewReducer(initialView, { type: 'begin', bounds })
   view = viewReducer(view, { type: 'snapshot', snapshot: snapshot([a]) })
@@ -40,7 +40,7 @@ test('지도를 넓힐 때 기존 항목은 유지하고 새로 보이는 집만
   assert.deepEqual(view.results, [b])
 })
 
-test('정렬은 사용자 요청 시 적용하며 이후 결과는 정렬된 목록 뒤에 추가한다', () => {
+test('소요시간 재정렬은 사용자 요청 시 적용하며 이후 결과는 기존 순서 뒤에 추가한다', () => {
   const a = apartment('늦은 집', 1000), b = apartment('빠른 집', 600), c = apartment('새 집', 500)
   let view = viewReducer(initialView, { type: 'begin', bounds })
   view = viewReducer(view, { type: 'snapshot', snapshot: snapshot([a]) })

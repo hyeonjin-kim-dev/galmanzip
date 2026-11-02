@@ -61,13 +61,11 @@ const ApartmentCard = memo(function ApartmentCard({ apartment, destination, sele
 })
 
 export default function ApartmentResults({ snapshot, results, viewLoading, onSort, destination, selectedId, onSelect }: ApartmentResultsProps) {
-  const [visibleCount, setVisibleCount] = useState(50)
-  const listRef = useRef<HTMLOListElement>(null)
-  const selectedIndex = results.findIndex(result => result.id === selectedId)
-  const shown = Math.max(visibleCount, selectedIndex + 1)
+  const [visibleCount, setVisibleCount] = useState({ direct: 50, transfer: 50 })
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (selectedIndex >= 0) listRef.current?.children[selectedIndex]?.scrollIntoView({ block: 'nearest' })
+    if (selectedId) listRef.current?.querySelector(`[data-place-id="${CSS.escape(selectedId)}"]`)?.scrollIntoView({ block: 'nearest' })
   }, [selectedId])
 
   if (snapshot.status === 'idle') return <div className="results-empty">
@@ -78,8 +76,12 @@ export default function ApartmentResults({ snapshot, results, viewLoading, onSor
   const outsideCount = snapshot.results.length - results.length
   const interrupted = snapshot.status === 'error' || snapshot.status === 'cancelled'
   const message = snapshot.status !== 'loading' ? snapshot.message : viewLoading
-    ? results.length ? '새로운 집을 찾으면 아래에 추가해요.' : '지도 주변의 집을 찾고 있어요.'
+    ? results.length ? '다른 집도 계속 찾고 있어요.' : '지도 주변의 집을 찾고 있어요.'
     : '다른 지역의 집도 확인 중이에요.'
+  const groups = [
+    { key: 'direct' as const, label: '환승 0회', items: results.filter(result => result.transfers === 0) },
+    { key: 'transfer' as const, label: '환승 1회 이상', items: results.filter(result => result.transfers > 0) },
+  ]
 
   return (
     <section className="apartment-results" aria-label="아파트 검색 결과" aria-busy={viewLoading && !results.length}>
@@ -88,7 +90,7 @@ export default function ApartmentResults({ snapshot, results, viewLoading, onSor
         <p>각 도보 구간이 5분 이하 · 직통 경로 우선</p>
         <p className="search-message" role={snapshot.status === 'error' ? 'alert' : 'status'} title={message}>{message}</p>
         <div className="results-actions">
-          <span>새 결과는 아래에 추가됩니다</span>
+          <span>환승 0회 우선</span>
           <button type="button" onClick={onSort} disabled={results.length < 2}>무환승·시간순 정렬</button>
         </div>
         <details className="results-notice">
@@ -111,11 +113,21 @@ export default function ApartmentResults({ snapshot, results, viewLoading, onSor
       </div> : <div className="results-empty"><p>{interrupted ? '이 지도 영역에서 아직 확인한 결과가 없어요.' : '이 지도 영역에는 조건에 맞는 집이 없어요.'}</p>
         <span>{outsideCount ? `지도 밖에서 찾은 집 ${outsideCount.toLocaleString('ko-KR')}곳은 지도를 축소하면 볼 수 있어요.` : interrupted ? '다시 검색해서 이 영역의 집을 확인해 주세요.' : '지도를 움직이거나 축소해서 다른 지역도 확인해 보세요.'}</span>
       </div>)}
-      {destination && <ol className="apartment-list" ref={listRef}>
-        {results.slice(0, shown).map(apartment => <ApartmentCard key={apartment.id} apartment={apartment}
-          destination={destination} selected={selectedId === apartment.id} onSelect={onSelect} />)}
-      </ol>}
-      {shown < results.length && <button className="results-more" type="button" onClick={() => setVisibleCount(shown + 50)}>아파트 더 보기</button>}
+      {destination && <div ref={listRef} className="apartment-groups">
+        {groups.map(group => {
+          if (!group.items.length) return null
+          const shown = Math.max(visibleCount[group.key], group.items.findIndex(result => result.id === selectedId) + 1)
+          return <section key={group.key} className="apartment-group" aria-label={`${group.label} 아파트`}>
+            <h3>{group.label}<span>{group.items.length.toLocaleString('ko-KR')}곳</span></h3>
+            <ol className="apartment-list">
+              {group.items.slice(0, shown).map(apartment => <ApartmentCard key={apartment.id} apartment={apartment}
+                destination={destination} selected={selectedId === apartment.id} onSelect={onSelect} />)}
+            </ol>
+            {shown < group.items.length && <button className="results-more" type="button"
+              onClick={() => setVisibleCount(current => ({ ...current, [group.key]: shown + 50 }))}>{group.label} 더 보기</button>}
+          </section>
+        })}
+      </div>}
     </section>
   )
 }

@@ -238,6 +238,8 @@ summary:focus-visible {
 .results-notice a { color: inherit; }
 summary { cursor: pointer; }
 .apartment-list { margin: 0; padding: 0; list-style: none; }
+.apartment-group > h3 { display: flex; align-items: center; justify-content: space-between; margin: 0; border-bottom: 1px solid #e6e8ea; padding: 10px 16px; color: #464c53; background: #f4f5f6; font-size: 13px; }
+.apartment-group > h3 > span { color: #6d747b; font-size: 12px; font-weight: 400; }
 .apartment-card { padding: 16px; border-bottom: 1px solid #e6e8ea; cursor: pointer; }
 .apartment-card[data-selected='true'] { background: #f3f7ff; }
 .apartment-heading { display: block; width: 100%; border: 0; padding: 0; color: inherit; background: none; text-align: left; cursor: pointer; }
