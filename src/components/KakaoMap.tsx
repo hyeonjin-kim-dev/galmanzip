@@ -221,7 +221,7 @@ export default function KakaoMap({ results, destination, selection, allResults, 
       const walking = leg.mode === 'walk'
       const background = new maps.Polyline({ path, strokeWeight: walking ? 7 : 10, strokeColor: '#ffffff', strokeOpacity: .9, strokeStyle: 'solid', zIndex: 3 })
       const line = new maps.Polyline({ path, strokeWeight: walking ? 4 : 6, strokeColor: appearance.color, strokeOpacity: 1,
-        strokeStyle: walking ? 'shortdash' : 'solid', endArrow: !walking, zIndex: 4 })
+        strokeStyle: walking ? 'shortdash' : 'solid', endArrow: false, zIndex: 4 })
       background.setMap(map); line.setMap(map)
       overlays.push(background, line)
       if (!walking) for (const [position, name, action] of [[path[0], leg.from, '승차'], [path.at(-1)!, leg.to, '하차']] as const) {
