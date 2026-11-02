@@ -8,6 +8,8 @@ import math
 import os
 import re
 import shutil
+import socket
+import ssl
 import time
 from collections import Counter
 from datetime import datetime
@@ -30,6 +32,20 @@ class DataError(ValueError):
 
 class ApiError(RuntimeError):
     pass
+
+
+def safe_api_error_code(payload):
+    try:
+        root = ET.fromstring(payload)
+        for node in root.iter():
+            node.tag = node.tag.rsplit('}', 1)[-1]
+        for name in ('returnReasonCode', 'resultCode'):
+            value = root.findtext('.//' + name, '').strip()
+            if value.isdigit() and len(value) <= 2:
+                return str(int(value))
+    except (ET.ParseError, ValueError):
+        pass
+    return '미제공'
 
 
 def metres(a, b):
@@ -178,9 +194,19 @@ class Client:
             if len(payload) > 8 * 1024 * 1024:
                 raise DataError('API 응답 크기 초과')
             return payload
-        except (HTTPError, URLError, TimeoutError, OSError):
-            # 예외의 URL·응답 본문에는 인증키가 포함될 수 있으므로 출력하지 않는다.
-            raise ApiError('버스 노선 API 연결·인증·서비스 상태를 확인해 주세요.') from None
+        except HTTPError as error:
+            # URL·본문은 출력하지 않고 HTTP 상태와 짧은 숫자형 제공기관 코드만 알린다.
+            try:
+                code = safe_api_error_code(error.read(65536))
+            except OSError:
+                code = '미제공'
+            finally:
+                error.close()
+            raise ApiError(f'버스 노선 API 응답 오류: HTTP {error.code}, 제공기관 코드 {code}.') from None
+        except (URLError, TimeoutError, OSError) as error:
+            reason = error.reason if isinstance(error, URLError) else error
+            kind = '인증서·TLS' if isinstance(reason, ssl.SSLError) else 'DNS' if isinstance(reason, socket.gaierror) else '시간 초과' if isinstance(reason, TimeoutError) else '연결'
+            raise ApiError(f'버스 노선 API {kind} 오류입니다. URL과 인증키는 출력하지 않습니다.') from None
 
 
 def prepare(network_dir, output, key, route_id='', max_requests=200):

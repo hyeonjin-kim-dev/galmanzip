@@ -8,7 +8,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 SPEC = importlib.util.spec_from_file_location('bus_shapes', Path(__file__).resolve().parents[1] / 'scripts/prepare-bus-shapes.py')
 BUILD = importlib.util.module_from_spec(SPEC)
@@ -61,6 +61,13 @@ class ShapeTest(unittest.TestCase):
         self.assertEqual([(row['lat'], row['lng']) for row in rows], [(row['lat'], row['lng']) for row in POINTS])
         with self.assertRaises(BUILD.ApiError) as caught:
             BUILD.xml_rows(b'<response><resultCode>30</resultCode><message>PRIVATE_KEY</message></response>', 'busRouteLineList', 'lineSeq')
+        self.assertNotIn('PRIVATE_KEY', str(caught.exception))
+        body = io.BytesIO(b'<response><returnReasonCode>30</returnReasonCode><message>PRIVATE_KEY</message></response>')
+        with patch.object(BUILD, 'urlopen', side_effect=HTTPError('https://example.org/?serviceKey=PRIVATE_KEY', 403, 'Forbidden', {}, body)):
+            with self.assertRaises(BUILD.ApiError) as caught:
+                BUILD.Client('PRIVATE_KEY', 2).get('getBusRouteLineListv2', '206000007')
+        self.assertIn('HTTP 403', str(caught.exception))
+        self.assertIn('코드 30', str(caught.exception))
         self.assertNotIn('PRIVATE_KEY', str(caught.exception))
         with patch.object(BUILD, 'urlopen', side_effect=URLError('https://example.org/?serviceKey=PRIVATE_KEY')):
             with self.assertRaises(BUILD.ApiError) as caught:
