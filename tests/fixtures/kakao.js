@@ -6,7 +6,11 @@
     getLat() { return this.lat }
     getLng() { return this.lng }
   }
-  const fire = (target, name, value) => (target.events?.[name] ?? []).forEach(callback => callback(value))
+  const fire = (target, name, value) => {
+    if (name === 'idle' && state.freezeIdle) return
+    const listeners = target.events?.[name] ?? []
+    listeners.forEach(callback => callback(value))
+  }
   class Map {
     constructor(container, options) { this.container = container; this.center = options.center; this.level = options.level; state.map = this; state.level = this.level }
     getCenter() { return this.center }
@@ -83,9 +87,11 @@
   }
   class Places {
     keywordSearch(query, callback, options) {
-      state.calls.push({ query, page: options.page, rect: options.rect, started: performance.now() })
+      const call = { query, page: options.page, rect: options.rect, started: performance.now() }
+      state.calls.push(call)
       const failed = state.calls.filter(call => call.query === '아파트').length > state.failAfter
       setTimeout(() => {
+        call.completed = performance.now()
         if (query !== '아파트') { callback([state.destination], 'OK', { hasNextPage: false, totalCount: 1 }); return }
         if (failed) { callback([], 'ERROR', {}); return }
         const bounds = options.rect?.split(',').map(Number)

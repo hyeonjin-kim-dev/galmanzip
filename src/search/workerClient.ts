@@ -4,7 +4,30 @@ let worker: Worker | undefined
 let expires = 0
 let idleTimer: number | undefined
 let sequence = 0
+let retained = 0
 const pending = new Map<number, (error?: Error, result?: unknown) => void>()
+
+function scheduleRelease() {
+  window.clearTimeout(idleTimer)
+  const active = worker
+  if (!active || retained || pending.size) return
+  idleTimer = window.setTimeout(() => {
+    if (worker === active) stop(new Error('사용하지 않는 경로 자료를 해제했습니다.'))
+  }, 30000)
+}
+
+// 장소 응답을 기다리는 동안에도 진행 중인 조회 계획은 유휴 자료가 아니다.
+export function retainRoutingWorker() {
+  retained++
+  window.clearTimeout(idleTimer)
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    retained--
+    scheduleRelease()
+  }
+}
 
 function stop(reason: Error) {
   worker?.terminate()
@@ -33,13 +56,11 @@ export function routingTask<T>(task: RoutingTask, signal: AbortSignal): Promise<
       signal.removeEventListener('abort', abort)
       if (error) reject(error)
       else resolve(result as T)
-      if (!pending.size) idleTimer = window.setTimeout(() => {
-        if (worker === active) stop(new Error('사용하지 않는 경로 자료를 해제했습니다.'))
-      }, 30000)
+      scheduleRelease()
     }
     const abort = () => {
       const error = new DOMException('검색을 취소했습니다.', 'AbortError')
-      if (task.kind === 'reach') stop(error)
+      if (task.kind === 'plan') stop(error)
       else finish(error)
     }
     const timer = window.setTimeout(() => stop(new Error('교통 자료 처리 시간이 초과되었습니다. 다시 시도해 주세요.')), 90000)

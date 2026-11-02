@@ -131,8 +131,10 @@ with sync_playwright() as p:
     def includes_new(call):
         west, south, east, north = map(float, call['rect'].split(','))
         return west <= 127.2 <= east and south <= 37.46 <= north
-    next_new = next(i for i in range(previous, len(calls)) if includes_new(calls[i]))
-    assert next_new - previous <= 1, (previous, next_new, calls)
+    # 병렬 조회가 이미 새 영역을 확인 중이면 그 응답도 바로 재사용할 수 있다.
+    if not any(includes_new(call) for call in calls[:previous]):
+        next_new = next(i for i in range(previous, len(calls)) if includes_new(calls[i]))
+        assert next_new - previous <= 1, (previous, next_new, calls)
     expect(page.locator('[data-place-id="near"]')).to_have_count(0)
     assert not errors, errors
     context.close()

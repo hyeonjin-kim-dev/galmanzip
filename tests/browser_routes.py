@@ -31,14 +31,16 @@ def active(app, full_bus=False):
 
 def instrument(app):
     evaluate(app, '''() => {
-      window.__routeTasks = []; window.__reachCompact = false;
+      window.__routeTasks = []; window.__planCompact = false;
       const post = Worker.prototype.postMessage;
       Worker.prototype.postMessage = function(task, ...options) {
         if (!this.__routeInstrumented) {
           this.__routeInstrumented = true;
           this.addEventListener('message', event => {
-            if (window.__routeTasks.find(task => task.id === event.data.id)?.kind === 'reach') {
-              window.__reachCompact = !!event.data.result?.stops?.length && event.data.result.stops.every(stop => !('legs' in stop));
+            if (window.__routeTasks.find(task => task.id === event.data.id)?.kind === 'plan') {
+              const plan = event.data.result;
+              window.__planCompact = !!plan?.pendingAreas?.length && !('stops' in plan)
+                && plan.pendingAreas.every(area => !('coverage' in area));
             }
           });
         }
@@ -115,7 +117,7 @@ with sync_playwright() as p:
         assert active(app, full_bus=True)[0]['path'] == [[37.4, 127.13], [37.4, 127.16], [37.47, 127.22]]
         assert active(app, full_bus=True)[0]['color'] == active(app)[1]['color']
         assert evaluate(app, '() => window.__previousLines.every(line => !line.map)')
-        assert evaluate(app, '() => window.__reachCompact')
+        assert evaluate(app, '() => window.__planCompact')
         assert evaluate(app, '() => document.documentElement.scrollWidth <= innerWidth')
         if mode != 'PC':
             assert app.locator('.map-route-info').bounding_box()['y'] >= app.locator('.destination-search').bounding_box()['y'] + app.locator('.destination-search').bounding_box()['height']

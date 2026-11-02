@@ -21,7 +21,8 @@ function appendVisible(previous: ApartmentResult[], all: ApartmentResult[], boun
 export function viewReducer(view: SearchView, action: Action): SearchView {
   switch (action.type) {
     case 'snapshot': return { ...view, snapshot: action.snapshot,
-      results: appendVisible(view.results, action.snapshot.results, view.bounds) }
+      results: action.snapshot.results === view.snapshot.results ? view.results
+        : appendVisible(view.results, action.snapshot.results, view.bounds) }
     case 'bounds': return sameBounds(view.bounds, action.bounds) ? view : { ...view, bounds: action.bounds,
       results: appendVisible(view.results, view.snapshot.results, action.bounds) }
     case 'sort': return { ...view, results: sortApartments([...view.results]) }

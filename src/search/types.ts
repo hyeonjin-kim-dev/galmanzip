@@ -66,8 +66,17 @@ export interface BusRoadShape {
   points: Point[]
   source: { name: string; url: string; date: string; license: string }
 }
-export type RoutingTask = { kind: 'reach'; destination: Place; minutes: number }
-  | { kind: 'rank'; destination: Place; minutes: number; places: Place[]; minMinutes?: number }
+export interface SearchArea { id: number; bounds: Bounds; page: number }
+export interface AreaPage { count: number; total: number; more: boolean }
+export interface SearchProgress { completed: number; total: number; limited: boolean; pendingAreas: Bounds[] }
+export interface SearchPlan extends SearchProgress {
+  initialArea?: SearchArea
+  source: TransitNetwork['source']
+  coverage: string
+}
+export type RoutingTask = { kind: 'plan'; session: number; destination: Place; minutes: number; bounds: Bounds | null }
+  | { kind: 'next'; session: number; bounds: Bounds | null }
+  | { kind: 'accept'; session: number; area: number; page: AreaPage; places: Place[]; minMinutes: number }
   | { kind: 'geometry'; destination: Place; apartment: ApartmentResult }
 export interface ApartmentResult extends Place {
   seconds: number

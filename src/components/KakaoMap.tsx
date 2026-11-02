@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { loadKakaoMaps } from '../lib/kakaoMaps'
 import type { MapCluster, MapInstance, MapMarker, MapsSdk } from '../lib/kakaoMaps'
 import type { Bounds } from '../search/bounds'
@@ -22,7 +22,7 @@ interface KakaoMapProps {
   onSelect(id: string): void
 }
 
-export default function KakaoMap({ results, destination, selection, allResults, searchVersion, maxMinutes, onViewport, onSelect }: KakaoMapProps) {
+export default memo(function KakaoMap({ results, destination, selection, allResults, searchVersion, maxMinutes, onViewport, onSelect }: KakaoMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<MapStatus>(appKey ? 'loading' : 'missing-key')
   const [context, setContext] = useState<{ maps: MapsSdk; map: MapInstance } | null>(null)
@@ -322,7 +322,7 @@ export default function KakaoMap({ results, destination, selection, allResults, 
       )}
     </>
   )
-}
+})
 
 function readBounds(map: MapInstance): Bounds {
   const bounds = map.getBounds(), sw = bounds.getSouthWest(), ne = bounds.getNorthEast()
