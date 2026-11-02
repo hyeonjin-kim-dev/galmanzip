@@ -3,6 +3,7 @@ import { distance } from './routing.ts'
 import type { ApartmentResult, BusRoadShape, TransitLine, TransitNetwork } from './types.ts'
 
 const assetName = /^shape-[a-f0-9]{12}\.json\.gz$/
+const sourceUrls = new Set(['https://www.data.go.kr/data/15080662/openapi.do', 'https://www.data.go.kr/data/15080658/openapi.do'])
 
 export function validateBusShape(value: unknown, line: TransitLine, network: TransitNetwork): BusRoadShape {
   const data = value as BusRoadShape | undefined
@@ -19,7 +20,7 @@ export function validateBusShape(value: unknown, line: TransitLine, network: Tra
     || typeof data.source?.name !== 'string' || !data.source.name.trim()
     || typeof data.source.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(data.source.date)
     || typeof data.source.license !== 'string' || !data.source.license.trim()
-    || data.source.url !== 'https://www.data.go.kr/data/15080662/openapi.do') {
+    || !sourceUrls.has(data.source.url)) {
     throw new Error('버스 도로 좌표와 운행 순서를 확인하지 못했습니다.')
   }
   const stops = new Map(network.stops.map(stop => [stop.id, stop]))

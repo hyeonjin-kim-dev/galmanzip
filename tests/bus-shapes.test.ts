@@ -19,6 +19,12 @@ const shape: BusRoadShape = { version: 1, lineId: line.id, stopIds: line.stops, 
   source: { name: '검증용 GBIS 좌표', url: 'https://www.data.go.kr/data/15080662/openapi.do', date: '2026-11-02', license: '검증 전용' } }
 const asset = 'shape-123456abcdef.json.gz'
 
+test('공식 전체 파일 출처도 노선·정류장 대조를 통과해야 사용할 수 있다', () => {
+  const bulk = { ...shape, source: { ...shape.source, url: 'https://www.data.go.kr/data/15080658/openapi.do' } }
+  assert.equal(validateBusShape(bulk, line, network).source.url, bulk.source.url)
+  assert.throws(() => validateBusShape({ ...bulk, stopIds: ['A', 'C', 'B'] }, line, network), /순서/)
+})
+
 test('탑승 구간과 연한 전체 노선은 동일한 도로 좌표를 잘라 사용한다', () => {
   const geometry = createRouteGeometry(network)(apartment, destination, new Map([[line.id, validateBusShape(shape, line, network)]]))
   assert.deepEqual(geometry.busLines[0].points, points)

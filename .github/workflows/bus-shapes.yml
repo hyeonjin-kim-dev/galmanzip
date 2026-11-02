@@ -43,3 +43,13 @@ jobs:
           name: bus-base-samples
           path: /tmp/galmanzip-bus-files/samples
           retention-days: 7
+      - name: 전체 파일과 기존 교통 자료 대조
+        run: python3 scripts/bus_files.py --files /tmp/galmanzip-bus-files --output /tmp/galmanzip-bus-shapes
+      - name: 배포 전 좌표 검증
+        run: node --experimental-strip-types scripts/validate-bus-shapes.ts /tmp/galmanzip-bus-shapes
+      - name: 검증한 좌표와 보고서 보관
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: bus-road-shapes
+          path: /tmp/galmanzip-bus-shapes
+          retention-days: 7

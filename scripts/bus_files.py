@@ -1,12 +1,18 @@
 """GBIS 전체 파일을 한 번 내려받아 정적 버스 도로 좌표를 준비한다."""
 import argparse
+import codecs
+import csv
 import gzip
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import re
+import shutil
+from collections import Counter
 from datetime import datetime
+from itertools import chain
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import unquote, urlencode, urlsplit
@@ -97,7 +103,7 @@ def download_files(output, key):
     for name, item in catalog.items():
         check_url(item['url'], FILE_HOSTS)
         target = output / (name + '.txt.gz')
-        digest, size, rows, sample = hashlib.sha256(), 0, 0, b''
+        digest, size, rows, carets, sample, tail = hashlib.sha256(), 0, 0, 0, b'', b''
         try:
             with open_resource(item['url'], FILE_HOSTS) as response, gzip.GzipFile(filename=target, mode='wb', mtime=0) as result:
                 while chunk := response.read(65536):
@@ -106,6 +112,8 @@ def download_files(output, key):
                         raise DataError('전체 파일의 크기 제한을 초과했습니다.')
                     digest.update(chunk)
                     rows += chunk.count(b'\n')
+                    carets += chunk.count(b'^')
+                    tail = chunk[-1:]
                     if len(sample) < 8192:
                         sample += chunk[:8192 - len(sample)]
                     result.write(chunk)
@@ -116,6 +124,8 @@ def download_files(output, key):
             raise DataError('전체 파일을 저장하지 못했습니다.') from None
         if size == 0:
             raise DataError('빈 전체 파일은 사용할 수 없습니다.')
+        if b'^' in sample.split(b'\n', 1)[0] and sample.lstrip(b'\xef\xbb\xbf').startswith(b'routeId|'):
+            rows = carets + int(tail != b'^') - 1
         report['files'][name] = {'file': target.name, 'version': item['version'], 'bytes': size,
                                  'sha256': digest.hexdigest(), 'rows': rows}
         samples = output / 'samples'
@@ -127,11 +137,213 @@ def download_files(output, key):
     return report
 
 
+FIELDS = {
+    'routeline': ('routeId', 'lineSeq', 'subLength', 'sumLength', 'x', 'y'),
+    'routestation': ('routeId', 'routeName', 'upDown', 'staOrder', 'stationId', 'stationName', 'x', 'y'),
+}
+
+
+def records(source):
+    # GBIS V2는 줄바꿈 대신 ^로 레코드를 구분한다. 큰 원본도 한 번에 메모리에 펼치지 않는다.
+    tail = ''
+    while chunk := source.read(65536):
+        values = (tail + chunk).split('^')
+        yield from values[:-1]
+        tail = values[-1]
+        if len(tail) > 65536:
+            raise DataError('전체 파일의 단일 레코드 크기를 초과했습니다.')
+    if tail:
+        yield tail
+
+
+def read_table(path, kind, wanted):
+    with gzip.open(path, 'rb') as source:
+        sample = source.read(8192)
+    # 구분자는 CSV 규칙으로 읽되 열의 의미는 공식 항목명 또는 명세의 열 순서로만 정한다.
+    encoding = 'utf-8-sig'
+    try:
+        codecs.getincrementaldecoder(encoding)().decode(sample, final=False)
+    except UnicodeDecodeError:
+        encoding = 'cp949'
+    text = sample.decode(encoding, errors='ignore')
+    fields = FIELDS[kind]
+    normalize = lambda value: re.sub(r'[^a-z0-9]', '', value.lower())
+    expected = [normalize(value) for value in fields]
+    prefix_text = text.split('^', 1)[0]
+    prefix = next(csv.reader([prefix_text], delimiter='|'), []) if '^' in text and '\n' not in prefix_text and '\r' not in prefix_text else []
+    gbis = '^' in text and all(value in [normalize(item) for item in prefix] for value in expected)
+    delimiters = []
+    for candidate in ('|' if gbis else '|^,\t'):
+        try:
+            first = prefix if gbis else next(csv.reader(io.StringIO(text), delimiter=candidate), [])
+        except csv.Error:
+            continue
+        names = [normalize(value) for value in first]
+        if all(value in names for value in expected) or len(first) == len(fields) and re.fullmatch(r'\d{9}', first[0].strip()):
+            delimiters.append(candidate)
+    if len(delimiters) != 1:
+        raise DataError('전체 파일의 구분자·열 순서를 확인하지 못했습니다.')
+    delimiter = delimiters[0]
+    groups, rejected = {}, {}
+    with gzip.open(path, 'rt', encoding=encoding, newline='') as source:
+        reader = csv.reader(records(source) if gbis else source, delimiter=delimiter)
+        header = next(reader, [])
+        names = [normalize(value) for value in header]
+        if 'routeid' in names:
+            if not all(value in names for value in expected) or len(set(names)) != len(names):
+                raise DataError('전체 파일의 항목명이 공식 명세와 다릅니다.')
+            indexes = [names.index(value) for value in expected]
+        else:
+            if len(header) != len(fields):
+                raise DataError('전체 파일의 열 개수가 공식 명세와 다릅니다.')
+            indexes = list(range(len(fields)))
+            # 헤더 없는 공식 열 순서도 첫 번째 경로점을 잃지 않게 처리한다.
+            reader = chain([header], reader)
+        for row in reader:
+            if not row or len(row) <= indexes[0]:
+                continue
+            identifier = row[indexes[0]].strip()
+            if identifier not in wanted or identifier in rejected:
+                continue
+            try:
+                value = {name: row[index].strip() for name, index in zip(fields, indexes)}
+                point = {'lat': float(value['y']), 'lng': float(value['x'])}
+                if not 32 <= point['lat'] <= 40 or not 123 <= point['lng'] <= 133:
+                    raise ValueError()
+                sequence = int(value['lineSeq' if kind == 'routeline' else 'staOrder'])
+                if sequence < 0:
+                    raise ValueError()
+                item = {'sequence': sequence, **point}
+                if kind == 'routestation':
+                    if not re.fullmatch(r'\d{9}', value['stationId']):
+                        raise ValueError()
+                    item['id'] = value['stationId']
+                group = groups.setdefault(identifier, [])
+                group.append(item)
+                if len(group) > 50000:
+                    raise ValueError()
+            except (ValueError, IndexError):
+                rejected[identifier] = '전체 파일의 순서·정류장·좌표 형식 오류'
+                groups.pop(identifier, None)
+    for identifier, rows in list(groups.items()):
+        rows.sort(key=lambda row: row['sequence'])
+        if len({row['sequence'] for row in rows}) != len(rows):
+            rejected[identifier] = '전체 파일의 중복 순서'
+            del groups[identifier]
+    return groups, rejected
+
+
+def verify_files(directory):
+    report = json.loads((directory / 'files.json').read_text(encoding='utf-8'))
+    if report.get('version') != 1 or report.get('sourceUrl') != SOURCE or set(report.get('files', {})) != set(FILES):
+        raise DataError('전체 파일의 출처·파일 목록이 올바르지 않습니다.')
+    for name, metadata in report['files'].items():
+        if metadata.get('file') != name + '.txt.gz' or not re.fullmatch(r'[a-f0-9]{64}', metadata.get('sha256', '')):
+            raise DataError('전체 파일의 이름·해시가 올바르지 않습니다.')
+        digest, size, carets, newlines, prefix, tail = hashlib.sha256(), 0, 0, 0, b'', b''
+        with gzip.open(directory / metadata['file'], 'rb') as source:
+            while chunk := source.read(65536):
+                size += len(chunk)
+                if size > 512 * 1024 * 1024:
+                    raise DataError('전체 파일의 크기 제한을 초과했습니다.')
+                digest.update(chunk)
+                carets += chunk.count(b'^')
+                newlines += chunk.count(b'\n')
+                if not prefix:
+                    prefix = chunk[:1024]
+                tail = chunk[-1:]
+        if digest.hexdigest() != metadata['sha256'] or size != metadata.get('bytes'):
+            raise DataError('전체 파일의 내용 해시·크기가 다릅니다.')
+        if not newlines and prefix.lstrip(b'\xef\xbb\xbf').startswith(b'routeId|') and carets:
+            metadata['rows'] = carets + int(tail != b'^') - 1
+    version = report['files']['routeline'].get('version', '')
+    match = re.search(r'(?<!\d)(20\d{6})(?:\d{0,6})(?!\d)', version)
+    try:
+        date = datetime.strptime(match[1], '%Y%m%d').date().isoformat() if match else None
+    except ValueError:
+        date = None
+    if not date:
+        raise DataError('노선 형상 파일의 기준일을 버전에서 확인하지 못했습니다.')
+    return report, date
+
+
+def prepare_files(directory, network_dir, output, api_requests=0):
+    report, date = verify_files(directory)
+    manifest = json.loads((network_dir / 'transit.json').read_text())
+    network = json.loads(gzip.decompress((network_dir / manifest['asset']).read_bytes()))
+    stops = {stop['id']: stop for stop in network['stops']}
+    groups = {}
+    for line in network['lines']:
+        match = SHAPES.ROUTE.fullmatch(line['id'])
+        if line['mode'] == 'bus' and match:
+            groups.setdefault(match[1], []).append(line)
+    tables, rejected = {}, {}
+    for kind in FILES:
+        tables[kind], invalid = read_table(directory / report['files'][kind]['file'], kind, groups)
+        rejected.update(invalid)
+    output.mkdir(parents=True, exist_ok=True)
+    index = {'version': 1, 'patterns': {}}
+    existing = network_dir / 'bus-shapes'
+    current = {line['id'] for line in network['lines']}
+    if (existing / 'index.json').exists():
+        for identifier, asset in json.loads((existing / 'index.json').read_text()).get('patterns', {}).items():
+            if identifier in current and isinstance(asset, str) and SHAPES.ASSET.fullmatch(asset) and (existing / asset).is_file():
+                index['patterns'][identifier] = asset
+                if (existing / asset).resolve() != (output / asset).resolve():
+                    shutil.copyfile(existing / asset, output / asset)
+    prior = set(index['patterns'])
+    reasons, prepared = Counter(), set()
+    for number, (identifier, lines) in enumerate(sorted(groups.items()), 1):
+        road, stations = tables['routeline'].get(identifier), tables['routestation'].get(identifier)
+        reason = rejected.get(identifier) or ('전체 파일에 노선 형상·정류소가 없음' if not road or not stations else None)
+        if reason:
+            reasons[reason] += len(lines)
+            continue
+        for line in lines:
+            try:
+                shape = SHAPES.make_shape(line, stops, stations, road, date)
+                shape['source'] = {'name': '경기버스정보(GBIS)', 'url': SOURCE, 'date': date,
+                                   'license': '경기도 기반정보 관리 · 이용허락범위 제한 없음'}
+                payload = json.dumps(shape, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode('utf-8')
+                asset = 'shape-' + hashlib.sha256(payload).hexdigest()[:12] + '.json.gz'
+                (output / asset).write_bytes(gzip.compress(payload, mtime=0))
+                index['patterns'][line['id']] = asset
+                prepared.add(line['id'])
+            except DataError as error:
+                reasons[str(error)] += 1
+        if number % 100 == 0:
+            print(json.dumps({'checkedRoutes': number, 'preparedPatterns': len(prepared)}, ensure_ascii=False), flush=True)
+    audit = {'sourceUrl': SOURCE, 'sourceDate': date, 'sourceFiles': report['files'], 'apiRequests': api_requests,
+             'downloadApiRequests': report.get('apiRequests', 0),
+             'networkAsset': manifest['asset'], 'eligibleRoutes': len(groups), 'preparedPatterns': len(prepared),
+             'newPatterns': len(prepared - prior), 'preservedPatterns': len(prior - prepared),
+             'publishedPatterns': len(index['patterns']), 'rejected': dict(reasons)}
+    (output / 'index.json').write_text(json.dumps(index, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    (output / 'audit.json').write_text(json.dumps(audit, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print(json.dumps(audit, ensure_ascii=False), flush=True)
+    if not prepared:
+        raise DataError('전체 파일에서 기존 교통 자료와 일치하는 노선 형상을 준비하지 못했습니다.')
+    referenced = set(index['patterns'].values())
+    for path in output.glob('shape-*.json.gz'):
+        if SHAPES.ASSET.fullmatch(path.name) and path.name not in referenced:
+            path.unlink()
+    return audit
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--download', type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--download', type=Path)
+    source.add_argument('--files', type=Path)
+    parser.add_argument('--network', type=Path, default=Path('public/data'))
+    parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     try:
-        download_files(args.download, os.environ.get('DATA_GO_KR_SERVICE_KEY', ''))
+        if args.download:
+            download_files(args.download, os.environ.get('DATA_GO_KR_SERVICE_KEY', ''))
+        if args.output:
+            prepare_files(args.files or args.download, args.network, args.output, api_requests=1 if args.download else 0)
     except (DataError, ApiError) as error:
         raise SystemExit(str(error)) from None
+    except (OSError, UnicodeError, csv.Error, json.JSONDecodeError):
+        raise SystemExit('전체 파일의 저장·문자 인코딩·내용 형식을 확인해 주세요.') from None
