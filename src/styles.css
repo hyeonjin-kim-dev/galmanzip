@@ -521,7 +521,7 @@ summary { cursor: pointer; }
 .map-route-info small { display: block; margin-top: 4px; color: #6d747b; font-size: 11px; }
 .map-route-info button { border: 1px solid #cdd1d5; border-radius: 6px; padding: 4px 8px; background: #fff; color: #464c53; cursor: pointer; }
 .map-route-legend { display: flex; flex-wrap: wrap; gap: 8px; color: #6d747b; font-size: 11px; }
-.map-route-legend span::before { content: ''; display: inline-block; width: 14px; margin-right: 4px; border-top: 3px solid #65a30d; vertical-align: middle; }
+.map-route-legend span::before { content: ''; display: inline-block; width: 14px; margin-right: 4px; border-top: 3px solid currentColor; vertical-align: middle; }
 .map-route-legend .map-route-walk::before { border-top: 3px dashed #687789; }
 .map-route-legend .map-route-context::before { opacity: .22; }
 

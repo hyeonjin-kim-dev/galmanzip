@@ -13,6 +13,7 @@ from zipfile import ZipFile
 
 NS = {'x': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
 START, END = 6 * 3600, 20 * 3600
+STYLES = json.loads(Path(__file__).with_name('transit-styles.json').read_text(encoding='utf-8'))
 
 
 def unique_member(archive, suffix):
@@ -55,6 +56,13 @@ def in_scope(info):
     # KTDB 전용 수단 코드다. 국제 GTFS의 route_type 의미로 해석하지 않는다.
     return (info['mode'] == 1 and info['region'] == '수도권'
             or info['mode'] == 0 and info['category'].startswith(('0_11', '0_23', '0_31')))
+
+
+def route_style(route, info):
+    # 버스는 원본 엑셀의 route_cate정의, 철도는 원본 노선명을 기준으로 분류한다.
+    group = 'rail' if info['mode'] == 1 else 'bus'
+    key = route['route_short_name'] if group == 'rail' else info['category']
+    return dict(STYLES[group].get(key, {'typeName': '지하철' if group == 'rail' else '버스', 'color': '#64748B'}))
 
 
 def clock(value):
@@ -166,6 +174,7 @@ def convert(source, destination):
                     'seconds': [math.ceil(seconds / pattern['count']) for seconds in pattern['running']],
                     'dwellSeconds': [math.ceil(seconds / pattern['count']) for seconds in pattern['dwells']],
                     'waitSeconds': wait, 'pickup': pickup, 'dropoff': dropoff}
+            line.update(route_style(route, meta[route_id]))
             lines.append(line)
             used_routes.add(route_id)
             used_stops.update(ids)

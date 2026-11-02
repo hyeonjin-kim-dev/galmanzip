@@ -23,6 +23,21 @@ test('배포한 실제 자료의 내용 해시와 검증 보고서가 일치한�
   assert.equal(audit.missingTrips, 0)
   assert.deepEqual(audit.invalidTrips, {})
   assert.equal(network.source.date, '2025년 3월 평일 하루')
+  for (const line of network.lines) {
+    assert.match(line.color ?? '', /^#[0-9A-F]{6}$/)
+    assert.ok(line.typeName && !['버스', '지하철'].includes(line.typeName), line.name)
+  }
+  const express = network.lines.filter(line => line.id.startsWith('BR_TAGO_GGB206000007:'))
+  assert.ok(express.length)
+  for (const line of express) {
+    assert.equal(line.name, '102번')
+    assert.equal(line.typeName, '직행좌석')
+    assert.equal(line.color, '#E60012')
+  }
+  const trunk = network.lines.find(line => line.id.startsWith('BR_TAGO_SEB100100007:'))!
+  assert.equal(trunk.name, '102번')
+  assert.equal(trunk.typeName, '간선')
+  assert.notEqual(trunk.color, express[0].color)
 })
 
 test('실제 서현역에서 강남역까지 정자 환승의 방향과 지정 시간이 보존된다', async () => {
@@ -87,7 +102,8 @@ test('서버가 이미 압축을 해제했거나 자료가 손상된 응답을 �
 
 test('배포 정보의 상대 주소를 해석하고 잘못된 주소와 통신 오류를 차단한다', async t => {
   const calls: string[] = []
-  const fetch = t.mock.method(globalThis, 'fetch', async (url: string | URL) => {
+  const fetch = t.mock.method(globalThis, 'fetch', async (url: string | URL, options?: RequestInit) => {
+    assert.equal(options?.cache, calls.length ? undefined : 'no-cache')
     calls.push(String(url))
     return calls.length === 1 ? Response.json(manifest) : new Response(bytes(packed))
   })

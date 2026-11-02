@@ -104,6 +104,8 @@ export function validateNetwork(value: unknown): TransitNetwork {
   const lines = new Set<string>()
   for (const line of data.lines) {
     if (!line.id || !line.name || lines.has(line.id) || !['bus', 'rail'].includes(line.mode)
+      || (line.color !== undefined && (typeof line.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(line.color)))
+      || (line.typeName !== undefined && (typeof line.typeName !== 'string' || !line.typeName.trim()))
       || !Array.isArray(line.stops) || line.stops.length < 2 || !line.stops.every(id => ids.has(id))
       || !Array.isArray(line.seconds) || line.seconds.length !== line.stops.length - 1
       || line.seconds.some(time => !Number.isFinite(time) || time <= 0)
@@ -278,7 +280,7 @@ export function createRouter(network: TransitNetwork) {
           const lineIndex = nodeLine[node]
           const line = network.lines[lineIndex]
           leg = { mode: line.mode, from: fromName, to: toName,
-            seconds: edges.seconds[edge], line: line.name, lineId: line.id, ...endpoints,
+            seconds: edges.seconds[edge], line: line.name, lineId: line.id, typeName: line.typeName, color: line.color, ...endpoints,
             fromIndex: Math.floor((node - lineOffsets[lineIndex]) / 2),
             toIndex: Math.floor((to - lineOffsets[lineIndex]) / 2) }
         }
@@ -334,7 +336,7 @@ export function directStops(network: TransitNetwork, destination: Point, maxMinu
         const end = byId.get(line.stops[exit])!
         const tail = tails.get(end.id)!
         best.set(stop.id, { ...stop, seconds, boardings: 1, legs: [
-          { mode: line.mode, from: stop.name, to: end.name, seconds: running - tail, line: line.name, lineId: line.id,
+          { mode: line.mode, from: stop.name, to: end.name, seconds: running - tail, line: line.name, lineId: line.id, typeName: line.typeName, color: line.color,
             fromStopId: stop.id, toStopId: end.id, fromIndex: i, toIndex: exit },
           { mode: 'walk', from: end.name, to: '목적지', seconds: tail, fromStopId: end.id },
         ] })

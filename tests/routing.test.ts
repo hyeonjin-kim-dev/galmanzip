@@ -29,6 +29,29 @@ test('집에서 목적지 방향으로 탐색하며 승차 대기 없이 탑승 
   assert.equal(reverse.stops.some(stop => stop.id === 'C'), false)
 })
 
+test('무환승 우선 경로와 환승 경로 모두 원본 노선의 종류·색상을 보존한다', () => {
+  const bus = { ...line('102번', ['A', 'C'], [600]), mode: 'bus' as const, typeName: '직행좌석', color: '#E60012' }
+  const first = { ...line('수인분당선', ['A', 'B'], [300]), typeName: '수인분당선', color: '#F5A200' }
+  const second = { ...line('신분당선', ['B', 'C'], [300]), typeName: '신분당선', color: '#D4003B' }
+  for (const lines of [[bus], [first, second]]) {
+    const graph = network(lines), router = createRouter(graph)
+    router(destination, 30)
+    const result = router.rank(apartment, destination)!
+    assert.equal(result.transfers, lines.length - 1)
+    assert.deepEqual(result.legs.filter(leg => leg.mode !== 'walk').map(leg => [leg.typeName, leg.color]),
+      lines.map(line => [line.typeName, line.color]))
+  }
+})
+
+test('색상과 노선 분류의 잘못된 자료를 검증 없이 사용하지 않는다', () => {
+  const graph = network()
+  graph.lines[0].color = 'red; 잘못된 값'
+  assert.throws(() => validateNetwork(graph), /노선 자료/)
+  graph.lines[0].color = '#0052A4'
+  graph.lines[0].typeName = ' '
+  assert.throws(() => validateNetwork(graph), /노선 자료/)
+})
+
 test('출발지 접근 도보와 목적지 하차 후 도보도 제한 시간에 포함한다', () => {
   const end = { ...destination, lat: destination.lat + 0.001 }
   const home = { ...apartment, lat: apartment.lat + 0.001 }

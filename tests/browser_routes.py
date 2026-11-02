@@ -5,8 +5,9 @@ from browser_support import BASE, NETWORK, choose, includes_selection, line, pre
 CURVED = dict(NETWORK,
     stops=NETWORK['stops'] + [dict(id='BEND', name='경유 정류장', lat=37.45, lng=127.17),
         dict(id='BUS_START', name='버스 기점', lat=37.47, lng=127.2), dict(id='BUS_END', name='버스 종점', lat=37.47, lng=127.22)],
-    lines=[dict(line('32번', ['BUS_START', 'A', 'BEND', 'C', 'BUS_END'], [1000, 300, 300, 1000]), mode='bus'),
-           line('검증 첫차', ['X', 'B'], [330]), dict(line('마을 7번', ['B', 'C', 'BUS_END'], [330, 1000]), mode='bus'),
+    lines=[dict(line('102번', ['BUS_START', 'A', 'BEND', 'C', 'BUS_END'], [1000, 300, 300, 1000]), mode='bus', typeName='직행좌석', color='#E60012'),
+           dict(line('검증 첫차', ['X', 'B'], [330]), typeName='수인분당선', color='#F5A200'),
+           dict(line('마을 7번', ['B', 'C', 'BUS_END'], [330, 1000]), mode='bus', typeName='마을', color='#6EA800'),
            line('검증 완행', ['Y', 'C'], [601])])
 
 
@@ -74,7 +75,11 @@ with sync_playwright() as p:
         expect(fast.locator('.apartment-time')).to_contain_text('약 10분')
         assert '대기' not in fast.locator('.route-gauge').get_attribute('aria-label')
         assert '대기' not in fast.locator('.route-details').text_content()
-        expect(fast.locator('.route-transit-stops')).to_contain_text('32번')
+        expect(fast.locator('.route-transit-stops')).to_contain_text('102번')
+        expect(fast.locator('.route-transit-stops')).to_contain_text('직행좌석')
+        expect(fast.locator('.route-details')).to_contain_text('직행좌석 102번')
+        assert fast.locator('.route-gauge-segment[data-mode="bus"]').evaluate('(segment) => getComputedStyle(segment).backgroundColor') == 'rgb(230, 0, 18)'
+        expect(fast.locator('.route-gauge')).to_have_attribute('aria-label', '직행좌석 102번 10분')
         expect(fast.locator('.route-transit-stops')).to_contain_text('2개 정류장')
         assert active(app) == []
         assert active(app, full_bus=True) == []
@@ -83,7 +88,7 @@ with sync_playwright() as p:
         pause(app)
         assert includes_selection(app, 'fast')
         assert active(app)[0]['path'] == [[37.4, 127.1], [37.45, 127.17], [37.4, 127.16]]
-        assert active(app)[0]['color'] == '#65A30D'
+        assert active(app)[0]['color'] == '#E60012'
         full_bus = active(app, full_bus=True)
         assert len(full_bus) == 1
         assert full_bus[0]['path'] == [[37.47, 127.2], [37.4, 127.1], [37.45, 127.17], [37.4, 127.16], [37.47, 127.22]]
@@ -102,6 +107,8 @@ with sync_playwright() as p:
         pause(app)
         assert len(active(app)) == 2
         assert len(set(line['color'] for line in active(app))) == 2
+        assert [item['color'] for item in active(app)] == ['#F5A200', '#6EA800']
+        assert transfer.locator('.route-gauge-segment[data-mode="rail"]').evaluate('(segment) => [getComputedStyle(segment).backgroundColor, getComputedStyle(segment).color]') == ['rgb(245, 162, 0)', 'rgb(0, 0, 0)']
         assert len(active(app, full_bus=True)) == 1
         assert active(app, full_bus=True)[0]['path'] == [[37.4, 127.13], [37.4, 127.16], [37.47, 127.22]]
         assert active(app, full_bus=True)[0]['color'] == active(app)[1]['color']
@@ -113,7 +120,7 @@ with sync_playwright() as p:
         transfer.locator('.route-preview').screenshot(path=f'/tmp/galmanzip-route-card-{mode}.png')
         assert not errors, errors
         context.close()
-        print(mode, '버스 전체 노선과 탑승 구간 구별·색상·실제 이동 구간 맞춤·이전 노선 제거 검증 통과', flush=True)
+        print(mode, '직행좌석 102번 빨강·지하철/마을버스 색상·게이지/지도/전체 노선 일치·밝은 노선 글자 대비 검증 통과', flush=True)
 
     context, page, errors = prepare(browser, network=CURVED)
     choose(page); instrument(page)

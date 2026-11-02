@@ -17,6 +17,23 @@ SPEC.loader.exec_module(BUILD)
 
 
 class ConversionTest(unittest.TestCase):
+    def test_route_styles_use_source_category_instead_of_bus_number(self):
+        route = {'route_short_name': '102'}
+        for category, label, color in [('0_1100_1', '간선', '#2876D5'), ('0_3100_01', '일반', '#2A9B48'),
+                                       ('0_3100_03', '직행좌석', '#E60012')]:
+            self.assertEqual(BUILD.route_style(route, dict(mode=0, category=category)), dict(typeName=label, color=color))
+        self.assertEqual(BUILD.route_style(route, dict(mode=0, category='미분류')), dict(typeName='버스', color='#64748B'))
+
+    def test_known_rail_lines_and_bus_types_have_distinct_stable_colors(self):
+        rail = BUILD.STYLES['rail']
+        self.assertEqual(len({style['color'] for style in rail.values()}), len(rail))
+        self.assertEqual(BUILD.route_style({'route_short_name': '수인분당선'}, dict(mode=1)),
+                         dict(typeName='수인분당선', color='#F5A200'))
+        self.assertEqual(BUILD.route_style({'route_short_name': '신분당선'}, dict(mode=1)),
+                         dict(typeName='신분당선', color='#D4003B'))
+        bus = {style['typeName']: style['color'] for style in BUILD.STYLES['bus'].values()}
+        self.assertEqual(len(set(bus.values())), len(bus))
+
     def test_source_specific_modes_and_time(self):
         self.assertTrue(BUILD.in_scope(dict(mode=0, category='0_3111', region='수원시')))
         self.assertTrue(BUILD.in_scope(dict(mode=1, category='', region='수도권')))
@@ -31,7 +48,7 @@ class ConversionTest(unittest.TestCase):
     def test_dwell_direction_restrictions_and_missing_headways(self):
         with tempfile.TemporaryDirectory() as folder:
             source, output = Path(folder) / '원본.zip', Path(folder) / '결과'
-            meta = {'bus': dict(mode=0, category='0_11', region='서울특별시')}
+            meta = {'bus': dict(mode=0, category='0_1100_1', region='서울특별시')}
             with ZipFile(source, 'w') as archive:
                 def table(name, header, rows):
                     data = io.StringIO(newline='')
@@ -59,6 +76,8 @@ class ConversionTest(unittest.TestCase):
             audit = json.loads((output / 'audit.json').read_text())
             self.assertEqual(len(graph['lines']), 1)
             line = graph['lines'][0]
+            self.assertEqual(line['typeName'], '간선')
+            self.assertEqual(line['color'], '#2876D5')
             self.assertEqual(line['stops'], ['A', 'B', 'C'])
             self.assertEqual(line['seconds'], [300, 270])
             self.assertEqual(line['dwellSeconds'], [0, 30, 0])

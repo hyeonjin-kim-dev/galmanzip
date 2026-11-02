@@ -17,16 +17,16 @@ export async function decodeNetwork(bytes: ArrayBuffer) {
   return validateNetwork(value)
 }
 
-async function download(url: string | URL) {
+async function download(url: string | URL, cache?: RequestCache) {
   let response: Response
-  try { response = await fetch(url) }
+  try { response = await fetch(url, { cache }) }
   catch { throw new Error('교통 자료를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.') }
   if (!response.ok) throw new Error('교통 자료를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')
   return response
 }
 
 export async function loadNetwork(url: string) {
-  const response = await download(url)
+  const response = await download(url, 'no-cache')
   let manifest
   try { manifest = await response.json() }
   catch { throw new Error('교통 자료 배포 정보가 올바르지 않습니다.') }

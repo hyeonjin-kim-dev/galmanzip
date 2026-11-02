@@ -15,7 +15,7 @@ interface ApartmentResultsProps {
 const minutes = (seconds: number) => Math.ceil(seconds / 60)
 const describeLeg = (leg: RouteLeg) => {
   if (leg.mode === 'walk') return `도보 · ${leg.from} → ${leg.to}`
-  return `${leg.line} · ${leg.from} → ${leg.to}`
+  return `${leg.mode === 'bus' && leg.typeName ? `${leg.typeName} ` : ''}${leg.line} · ${leg.from} → ${leg.to}`
 }
 
 const ApartmentCard = memo(function ApartmentCard({ apartment, destination, selected, onSelect }: {

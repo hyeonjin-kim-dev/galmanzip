@@ -7,6 +7,8 @@ export interface TransitLine {
   id: string
   name: string
   mode: 'bus' | 'rail'
+  typeName?: string
+  color?: string
   stops: string[]
   seconds: number[]
   waitSeconds: number
@@ -30,6 +32,8 @@ export interface RouteLeg {
   seconds: number
   line?: string
   lineId?: string
+  typeName?: string
+  color?: string
   fromStopId?: string
   toStopId?: string
   fromIndex?: number
