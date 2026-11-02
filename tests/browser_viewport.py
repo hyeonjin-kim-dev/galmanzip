@@ -2,7 +2,7 @@
 import json
 import time
 from playwright.sync_api import sync_playwright, expect
-from browser_support import NETWORK, choose, line, prepare
+from browser_support import NETWORK, choose, includes_selection, line, prepare
 
 VIEW_NETWORK = dict(NETWORK,
     stops=[dict(id='C', name='목적지역', lat=37.4, lng=127.16),
@@ -47,16 +47,18 @@ with sync_playwright() as p:
         expect(page.get_by_role('button', name='중단', exact=True)).to_be_visible()
         expect(page.locator('.test-cluster')).to_have_text('1')
         page.locator('[data-place-id="near"] .apartment-heading').click()
-        page.wait_for_function('window.__searchTest.map.getCenter().getLng() === 127.155 && window.__searchTest.map.getLevel() === 4')
+        page.wait_for_function('window.__searchTest.fitCount === 1')
+        assert includes_selection(page, 'near')
+        selected_center = page.evaluate('window.__searchTest.map.getCenter().getLng()')
         page.locator('[data-place-id="near"] summary').click()
         expect(page.locator('[data-place-id="near"] .route-details')).to_have_attribute('open', '')
         expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
         total = page.evaluate('performance.now() - window.__started')
         assert first < total - 500
         expect(page.locator('.apartment-card')).to_have_count(1)
-        assert page.evaluate('window.__searchTest.fitCount || 0') == 0
-        assert page.evaluate('window.__searchTest.map.getCenter().getLng()') == 127.155
-        assert page.evaluate('window.__searchTest.map.getLevel()') == 4
+        assert page.evaluate('window.__searchTest.fitCount') == 1
+        assert page.evaluate('window.__searchTest.map.getCenter().getLng()') == selected_center
+        assert includes_selection(page, 'near')
         page.get_by_role('button', name='목적지로', exact=True).click()
         before = page.evaluate('window.__searchTest.calls.length')
         for _ in range(4):

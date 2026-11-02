@@ -9,9 +9,10 @@ interface MapPanelProps {
   search: ReactNode
   children: ReactNode
   searchVersion: number
+  selection: { id: string } | null
 }
 
-export default function MapPanel({ onHeightChange, search, children, searchVersion }: MapPanelProps) {
+export default function MapPanel({ onHeightChange, search, children, searchVersion, selection }: MapPanelProps) {
   const panelRef = useRef<HTMLElement>(null)
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null)
   const suppressClickRef = useRef(false)
@@ -33,6 +34,12 @@ export default function MapPanel({ onHeightChange, search, children, searchVersi
   useEffect(() => {
     if (searchVersion) setPosition(current => current === 'collapsed' ? 'half' : current)
   }, [searchVersion])
+
+  useEffect(() => {
+    if (selection && window.matchMedia('(max-width: 767px)').matches) {
+      setPosition(current => current === 'expanded' ? 'half' : current)
+    }
+  }, [selection])
 
   const getHeights = () => {
     const viewportHeight =

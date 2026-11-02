@@ -1,7 +1,7 @@
 """지도·검색·경로와 모바일·iframe 동작의 브라우저 회귀 검사."""
 import time
 from playwright.sync_api import sync_playwright, expect
-from browser_support import BASE, STOPS, NETWORK, choose, line, prepare
+from browser_support import BASE, STOPS, NETWORK, choose, includes_selection, line, prepare
 
 
 def show_all(page):
@@ -41,7 +41,8 @@ with sync_playwright() as p:
         assert page.evaluate('window.__searchTest.calls.some(call => call.page > 1)')
         assert page.evaluate('window.__searchTest.fitCount') == 1
         page.locator('[data-place-id="fast"] .apartment-heading').click()
-        page.wait_for_function('window.__searchTest.map.getCenter().getLng() === 127.1 && window.__searchTest.map.getLevel() === 4')
+        page.wait_for_function('window.__searchTest.fitCount === 2')
+        assert includes_selection(page, 'fast')
         page.locator('[data-place-id="fast"] summary').click()
         expect(page.locator('[data-place-id="fast"] .route-details')).to_contain_text('검증 출발역 → 검증 목적지역')
         assert page.locator('[data-place-id="fast"] a').first.get_attribute('href').startswith('https://map.kakao.com/link/by/traffic/')

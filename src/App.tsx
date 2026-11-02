@@ -72,7 +72,7 @@ export default function App() {
       style={{ '--sheet-height': sheetHeight } as CSSProperties}
     >
       <h1 className="visually-hidden">갈만한 거리의 집</h1>
-      <MapPanel onHeightChange={setSheetHeight} searchVersion={searchVersion}
+      <MapPanel onHeightChange={setSheetHeight} searchVersion={searchVersion} selection={selection}
         search={<DestinationSearch busy={snapshot.status === 'loading'} onSearch={search} onReset={reset} onCancel={cancel} />}>
         <ApartmentResults key={searchVersion} snapshot={snapshot} results={view.results} viewLoading={isViewLoading(view)}
           onSort={() => dispatch({ type: 'sort' })} destination={destination} selectedId={selectedId} onSelect={select} />

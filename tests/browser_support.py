@@ -73,3 +73,12 @@ def choose(page, touch=False):
     expect(options.last).to_have_text('2시간 50분 ~ 3시간')
     page.get_by_role('option', name='10분 ~ 20분', exact=True).click()
     expect(page.get_by_role('button', name='검색', exact=True)).to_be_enabled()
+
+
+def includes_selection(page, apartment_id):
+    return page.locator('.map-canvas').evaluate('''(_, id) => {
+      const state = window.__searchTest, apartment = state.homes.find(home => home.id === id);
+      const bounds = state.map.getBounds(), sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+      return [apartment, state.destination].every(point => Number(point.y) >= sw.getLat() && Number(point.y) <= ne.getLat()
+        && Number(point.x) >= sw.getLng() && Number(point.x) <= ne.getLng());
+    }''', apartment_id)

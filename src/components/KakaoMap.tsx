@@ -151,14 +151,30 @@ export default function KakaoMap({ results, destination, selection, allResults, 
   }
   useLayoutEffect(() => { focusDestination() }, [context, destination, searchVersion, maxMinutes, onViewport])
 
+  // 결과 갱신과 구분해, 같은 항목을 다시 누른 경우에도 사용자 선택마다 이동한다.
   useEffect(() => {
-    if (!context || !selection) return
+    if (!context || !selection || !destination) return
     const apartment = allResults.find(result => result.id === selection.id)
     if (!apartment) return
-    context.map.setLevel(Math.min(4, context.map.getLevel()))
-    context.map.panTo(new context.maps.LatLng(apartment.lat, apartment.lng))
-    // 결과 갱신과 구분해, 같은 항목을 다시 누른 경우에도 사용자 선택마다 이동한다.
-  }, [context, selection])
+    const mobile = window.matchMedia('(max-width: 767px)').matches
+    const timer = window.setTimeout(() => {
+      const container = containerRef.current
+      if (!container) return
+      const page = container.closest('.map-page')
+      const frame = container.getBoundingClientRect()
+      const search = page?.querySelector('.destination-search')?.getBoundingClientRect()
+      const controls = page?.querySelector('.map-controls')?.getBoundingClientRect()
+      const top = Math.max(64, mobile && search ? search.bottom - frame.top + 48 : 0)
+      const right = Math.max(48, (controls?.width ?? 0) + 24)
+      const bounds = new context.maps.LatLngBounds()
+      bounds.extend(new context.maps.LatLng(apartment.lat, apartment.lng))
+      bounds.extend(new context.maps.LatLng(destination.lat, destination.lng))
+      context.map.relayout()
+      context.map.setBounds(bounds, Math.min(top, frame.height * 0.6), Math.min(right, frame.width * 0.45), 48, 48)
+    }, mobile ? 220 : 0)
+    // 모바일 패널이 줄어드는 전환이 끝난 뒤 실제 지도 크기에 맞춘다.
+    return () => window.clearTimeout(timer)
+  }, [context, selection, destination])
 
   const selected = results.find(result => result.id === selection?.id)
   useEffect(() => {
