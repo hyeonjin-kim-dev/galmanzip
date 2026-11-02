@@ -1,4 +1,6 @@
 {
   "version": 1,
-  "patterns": {}
+  "patterns": {
+    "BR_TAGO_GGB206000007:5b218eb58594": "shape-d1b672661691.json.gz"
+  }
 }
