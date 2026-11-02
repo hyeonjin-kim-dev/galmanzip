@@ -10,8 +10,10 @@ import re
 import shutil
 import socket
 import ssl
+import threading
 import time
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -181,6 +183,7 @@ def make_shape(line, stops, stations, road, date):
 class Client:
     def __init__(self, key, budget):
         self.key, self.budget, self.calls = unquote(key.strip()), budget, 0
+        self.lock, self.next_request = threading.Lock(), 0
 
     def get(self, operation, route_id):
         for attempt in range(3):
@@ -192,11 +195,14 @@ class Client:
                 time.sleep(2 ** attempt)
 
     def _get_once(self, operation, route_id):
-        if self.calls >= self.budget:
-            raise ApiError('설정한 요청 수에 도달했습니다.')
-        self.calls += 1
-        if self.calls > 1:
-            time.sleep(.2)
+        with self.lock:
+            if self.calls >= self.budget:
+                raise ApiError('설정한 요청 수에 도달했습니다.')
+            delay = self.next_request - time.monotonic()
+            if delay > 0:
+                time.sleep(delay)
+            self.next_request = time.monotonic() + .2
+            self.calls += 1
         url = 'https://apis.data.go.kr/6410000/busrouteservice/v2/' + operation
         url += '?' + urlencode({'serviceKey': self.key, 'routeId': route_id, 'format': 'xml'})
         try:
@@ -220,6 +226,12 @@ class Client:
             kind = '인증서·TLS' if isinstance(reason, ssl.SSLError) else 'DNS' if isinstance(reason, socket.gaierror) else '시간 초과' if isinstance(reason, TimeoutError) else '연결'
             raise ApiError(f'버스 노선 API {kind} 오류입니다. URL과 인증키는 출력하지 않습니다.',
                            retryable=not isinstance(reason, ssl.SSLError)) from None
+
+
+def fetch_route(client, identifier):
+    road = xml_rows(client.get('getBusRouteLineListv2', identifier), 'busRouteLineList', 'lineSeq')
+    stations = xml_rows(client.get('getBusRouteStationListv2', identifier), 'busRouteStationList', 'stationSeq', 'stationId') if road else []
+    return road, stations
 
 
 def prepare(network_dir, output, key, route_id='', max_requests=200):
@@ -254,41 +266,50 @@ def prepare(network_dir, output, key, route_id='', max_requests=200):
             attempted = {value for value in previous.get('attemptedRoutes', []) if isinstance(value, str) and value in groups}
             if not route_id:
                 reasons.update(previous.get('rejected', {}))
+    pending = []
     for identifier, lines in sorted(groups.items(), key=lambda item: (item[0] != '206000007', item[0])):
         if not route_id:
             lines = [line for line in lines if line['id'] not in index['patterns']]
             if not lines or identifier in attempted:
                 continue
-        if client.calls + 2 > max_requests:
-            break
-        try:
-            road = xml_rows(client.get('getBusRouteLineListv2', identifier), 'busRouteLineList', 'lineSeq')
-            stations = xml_rows(client.get('getBusRouteStationListv2', identifier), 'busRouteStationList', 'stationSeq', 'stationId') if road else []
-        except ApiError as error:
-            # 외부 장애로 중단되어도 이미 검증한 좌표는 결과물로 보존한다.
-            stop_error = error
-            break
-        except DataError as error:
-            reasons[str(error)] += len(lines)
-            attempted.add(identifier)
-            continue
-        attempted.add(identifier)
-        if len(attempted) % 50 == 0:
-            print(json.dumps({'checkedRoutes': len(attempted), 'requests': client.calls,
-                              'preparedPatterns': added}, ensure_ascii=False), flush=True)
-        if not road:
-            reasons['노선 좌표 없음'] += len(lines)
-            continue
-        for line in lines:
-            try:
-                shape = make_shape(line, stops, stations, road, date)
-                payload = json.dumps(shape, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode('utf-8')
-                asset = 'shape-' + hashlib.sha256(payload).hexdigest()[:12] + '.json.gz'
-                (output / asset).write_bytes(gzip.compress(payload, mtime=0))
-                index['patterns'][line['id']] = asset
-                added += 1
-            except DataError as error:
-                reasons[str(error)] += 1
+        pending.append((identifier, lines))
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        cursor = 0
+        while cursor < len(pending) and not stop_error:
+            count = min(4, (max_requests - client.calls) // 2)
+            if count == 0:
+                break
+            batch = [(identifier, lines, pool.submit(fetch_route, client, identifier))
+                     for identifier, lines in pending[cursor:cursor + count]]
+            cursor += len(batch)
+            for identifier, lines, future in batch:
+                try:
+                    road, stations = future.result()
+                except ApiError as error:
+                    # 같은 묶음에서 완료한 자료까지 보존하고 다음 묶음은 시작하지 않는다.
+                    stop_error = error
+                    continue
+                except DataError as error:
+                    reasons[str(error)] += len(lines)
+                    attempted.add(identifier)
+                    continue
+                attempted.add(identifier)
+                if len(attempted) % 50 == 0:
+                    print(json.dumps({'checkedRoutes': len(attempted), 'requests': client.calls,
+                                      'preparedPatterns': added}, ensure_ascii=False), flush=True)
+                if not road:
+                    reasons['노선 좌표 없음'] += len(lines)
+                    continue
+                for line in lines:
+                    try:
+                        shape = make_shape(line, stops, stations, road, date)
+                        payload = json.dumps(shape, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode('utf-8')
+                        asset = 'shape-' + hashlib.sha256(payload).hexdigest()[:12] + '.json.gz'
+                        (output / asset).write_bytes(gzip.compress(payload, mtime=0))
+                        index['patterns'][line['id']] = asset
+                        added += 1
+                    except DataError as error:
+                        reasons[str(error)] += 1
     remaining = sum(identifier not in attempted and any(line['id'] not in index['patterns'] for line in lines)
                     for identifier, lines in groups.items())
     report = {'requests': client.calls, 'preparedPatterns': added, 'publishedPatterns': len(index['patterns']),

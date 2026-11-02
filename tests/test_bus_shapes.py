@@ -4,11 +4,14 @@ import importlib.util
 import io
 import json
 import tempfile
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qs, urlparse
 
 SPEC = importlib.util.spec_from_file_location('bus_shapes', Path(__file__).resolve().parents[1] / 'scripts/prepare-bus-shapes.py')
 BUILD = importlib.util.module_from_spec(SPEC)
@@ -126,10 +129,12 @@ class ShapeTest(unittest.TestCase):
             root = Path(folder) / '자료'
             missing = {**LINE, 'id': 'BR_TAGO_GGB100000001:abcdef123456'}
             self.write_network(root, [LINE, missing])
-            responses = iter([xml_rows(POINTS, 'busRouteLineList', 'lineSeq'),
-                              xml_rows(STATIONS, 'busRouteStationList', 'stationSeq', 'stationId'),
-                              b'<response><resultCode>4</resultCode></response>'])
-            with patch.object(BUILD, 'urlopen', side_effect=lambda *args, **kwargs: io.BytesIO(next(responses))), patch.object(BUILD.time, 'sleep'), redirect_stdout(io.StringIO()):
+            def respond(request, **kwargs):
+                if parse_qs(urlparse(request.full_url).query)['routeId'] == ['100000001']:
+                    return io.BytesIO(b'<response><resultCode>4</resultCode></response>')
+                return io.BytesIO(xml_rows(POINTS, 'busRouteLineList', 'lineSeq') if 'getBusRouteLineListv2' in request.full_url
+                                  else xml_rows(STATIONS, 'busRouteStationList', 'stationSeq', 'stationId'))
+            with patch.object(BUILD, 'urlopen', side_effect=respond), patch.object(BUILD.time, 'sleep'), redirect_stdout(io.StringIO()):
                 first = BUILD.prepare(root, root / 'bus-shapes', 'PRIVATE_KEY', '', 10)
             self.assertTrue(first['complete'])
             self.assertEqual(first['rejected'], {'노선 좌표 없음': 1})
@@ -144,6 +149,51 @@ class ShapeTest(unittest.TestCase):
                 refreshed = BUILD.prepare(root, Path(folder) / '재확인', 'PRIVATE_KEY', '', 10)
             self.assertEqual(refreshed['requests'], 1)
             self.assertEqual(send.call_count, 1)
+
+    def test_parallel_fetches_share_one_request_budget_and_start_interval(self):
+        clock, starts, scheduled, guard = [100.0], [], [], threading.Lock()
+        def now():
+            scheduled.append(clock[0])
+            return clock[0]
+        def sleep(seconds):
+            clock[0] += seconds
+        def respond(request, **kwargs):
+            with guard:
+                starts.append(clock[0])
+            return io.BytesIO(b'<response/>')
+        client = BUILD.Client('PRIVATE_KEY', 5)
+        with patch.object(BUILD.time, 'monotonic', side_effect=now), patch.object(BUILD.time, 'sleep', side_effect=sleep), patch.object(BUILD, 'urlopen', side_effect=respond):
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                futures = [pool.submit(client.get, 'getBusRouteLineListv2', '206000007') for _ in range(8)]
+                results = []
+                for future in futures:
+                    try:
+                        results.append(future.result())
+                    except BUILD.ApiError:
+                        pass
+        self.assertEqual(client.calls, 5)
+        self.assertEqual(len(starts), 5)
+        self.assertEqual(len(results), 5)
+        reservations = scheduled[1::2]
+        self.assertTrue(all(b - a >= .1999 for a, b in zip(reservations, reservations[1:])))
+
+    def test_preparation_fetches_four_routes_concurrently_without_losing_results(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root, output = Path(folder) / '자료', Path(folder) / '좌표'
+            lines = [{**LINE, 'id': f'BR_TAGO_GGB20600000{number}:abcdef123456'} for number in range(4)]
+            self.write_network(root, lines)
+            barrier = threading.Barrier(4)
+            def respond(request, **kwargs):
+                if 'getBusRouteLineListv2' in request.full_url:
+                    barrier.wait(timeout=5)
+                    return io.BytesIO(xml_rows(POINTS, 'busRouteLineList', 'lineSeq'))
+                return io.BytesIO(xml_rows(STATIONS, 'busRouteStationList', 'stationSeq', 'stationId'))
+            with patch.object(BUILD, 'urlopen', side_effect=respond), patch.object(BUILD.time, 'sleep'), redirect_stdout(io.StringIO()):
+                report = BUILD.prepare(root, output, 'PRIVATE_KEY', '', 8)
+            self.assertEqual(report['requests'], 8)
+            self.assertEqual(report['preparedPatterns'], 4)
+            self.assertEqual(report['publishedPatterns'], 4)
+            self.assertTrue(report['complete'])
 
     def test_preparation_publishes_only_verified_geometry_without_credentials(self):
         with tempfile.TemporaryDirectory() as folder:
