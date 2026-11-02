@@ -40,7 +40,7 @@ export function walkingSeconds(metres: number): number {
   return Math.ceil(metres * 1.3 / 1.2)
 }
 
-// 차량을 타기 전까지 이어지는 도보를 한 구간으로 검사한다. 대기는 도보 구간을 나누지 않는다.
+// 차량을 타기 전까지 이어지는 도보를 한 구간으로 검사한다.
 function walkingFits(legs: RouteLeg[], initialSeconds = 0): boolean {
   let seconds = initialSeconds
   if (seconds > MAX_WALK_SECONDS) return false
@@ -128,13 +128,15 @@ export function createRouter(network: TransitNetwork) {
   const indices = new Map(stops.map((stop, index) => [stop.id, index]))
   const n = stops.length
   const positions = network.lines.reduce((sum, line) => sum + line.stops.length, 0)
-  const nodes = n * 2 + positions * 2
-  const edges = new Edges(nodes, positions * 4 + n * 8)
-  const WALK = 0, WAIT = 1, RIDE = 2, ALIGHT = 3, DWELL = 4
+  const nodes = n * 2 + positions * 3
+  const edges = new Edges(nodes, positions * 9 + n * 8)
+  const WALK = 0, BOARD = 1, RIDE = 2, ALIGHT = 3, DWELL = 4, TRANSFER = 5, LINK = 6
   const nodeStop = new Int32Array(nodes)
   const nodeLine = new Int32Array(nodes).fill(-1)
   const railStops = new Set<number>()
   const lineOffsets: number[] = []
+  const arrivals = Array.from({ length: n }, () => [] as number[])
+  const departures = Array.from({ length: n }, () => [] as number[])
   let offset = n * 2
   stops.forEach((_, index) => { nodeStop[index] = index; nodeStop[n + index] = index })
   network.lines.forEach((line, lineIndex) => {
@@ -145,9 +147,16 @@ export function createRouter(network: TransitNetwork) {
       nodeStop[arrival] = nodeStop[departure] = stopIndex
       nodeLine[arrival] = nodeLine[departure] = lineIndex
       if (line.mode === 'rail') railStops.add(stopIndex)
-      if (line.dropoff?.[index] !== false) edges.add(arrival, n + stopIndex, 0, ALIGHT)
+      if (line.dropoff?.[index] !== false) {
+        edges.add(arrival, n + stopIndex, 0, ALIGHT)
+        arrivals[stopIndex].push(arrival)
+      }
       if (index + 1 < line.stops.length) {
-        if (line.pickup?.[index] !== false) edges.add(stopIndex, departure, line.waitSeconds, WAIT)
+        // 승차 전 대기는 제외하되 승차 연결을 남겨 환승 횟수를 계산한다.
+        if (line.pickup?.[index] !== false) {
+          edges.add(stopIndex, departure, 0, BOARD)
+          departures[stopIndex].push(departure)
+        }
         edges.add(arrival, departure, line.dwellSeconds?.[index] ?? 0, DWELL)
         edges.add(departure, arrival + 2, line.seconds[index], RIDE)
       }
@@ -157,10 +166,35 @@ export function createRouter(network: TransitNetwork) {
   const specified = new Map(network.transfers.map(transfer => [`${transfer.from}\0${transfer.to}`, transfer.seconds]))
   for (const transfer of network.transfers) {
     // 5분 초과 환승을 빼도 원본 지정은 남겨 가까운 정류장 간 자동 도보로 우회하지 못하게 한다.
-    if (transfer.seconds <= MAX_WALK_SECONDS) edges.add(n + indices.get(transfer.from)!, indices.get(transfer.to)!, transfer.seconds, WALK)
+    if (transfer.from !== transfer.to && transfer.seconds <= MAX_WALK_SECONDS) edges.add(n + indices.get(transfer.from)!, indices.get(transfer.to)!, transfer.seconds, WALK)
   }
   for (let index = 0; index < n; index++) {
-    if (!specified.has(`${stops[index].id}\0${stops[index].id}`)) edges.add(n + index, index, 0, WALK)
+    const seconds = specified.get(`${stops[index].id}\0${stops[index].id}`) ?? 0
+    const options = departures[index]
+    if (seconds > MAX_WALK_SECONDS || !options.length || !arrivals[index].length) continue
+    type Group = { node: number; start: number; end: number; left?: Group; right?: Group }
+    // 승차 위치의 구간을 공유해 노선이 많은 정류장에서도 모든 환승 쌍을 만들지 않는다.
+    const group = (start: number, end: number): Group => {
+      if (end - start === 1) return { node: options[start], start, end }
+      const node = offset++, middle = (start + end) >> 1
+      nodeStop[node] = index
+      const left = group(start, middle), right = group(middle, end)
+      for (const child of [left, right]) edges.add(node, child.node, 0, child.end - child.start === 1 ? BOARD : LINK)
+      return { node, start, end, left, right }
+    }
+    const root = group(0, options.length)
+    const positions = new Map(options.map((node, index) => [node, index]))
+    const connect = (arrival: number, blocked: number | undefined, target: Group) => {
+      if (blocked === undefined || blocked < target.start || blocked >= target.end) {
+        edges.add(arrival, target.node, seconds, target.end - target.start === 1 ? TRANSFER : WALK)
+      } else if (target.left && target.right) {
+        connect(arrival, blocked, target.left); connect(arrival, blocked, target.right)
+      }
+    }
+    for (const arrival of arrivals[index]) {
+      // 같은 정차 위치에 다시 타서 차량의 정차시간을 건너뛰는 우회만 제외한다.
+      connect(arrival, positions.get(arrival + 1), root)
+    }
   }
   // 작은 격자로 이웃 정류장만 비교해 전체 정류장 쌍의 비교를 피한다.
   const cells = new Map<string, number[]>()
@@ -216,7 +250,7 @@ export function createRouter(network: TransitNetwork) {
       if (current.seconds > maxMinutes * 60) continue
       for (let edge = edges.heads[current.node]; edge >= 0; edge = edges.next[edge]) {
         const from = edges.from[edge]
-        const time = current.seconds + edges.seconds[edge], boardings = current.boardings + (edges.kind[edge] === WAIT ? 1 : 0)
+        const time = current.seconds + edges.seconds[edge], boardings = current.boardings + (edges.kind[edge] === BOARD || edges.kind[edge] === TRANSFER ? 1 : 0)
         if (time > maxMinutes * 60 || time > seconds[from] || (time === seconds[from] && boardings >= boards[from])) continue
         seconds[from] = time
         boards[from] = boardings
@@ -239,14 +273,14 @@ export function createRouter(network: TransitNetwork) {
         const fromName = stops[nodeStop[node]].name, toName = stops[nodeStop[to]].name
         let leg: RouteLeg | undefined
         const endpoints = { fromStopId: stops[nodeStop[node]].id, toStopId: stops[nodeStop[to]].id }
-        if (kind === WALK) leg = { mode: 'walk', from: fromName, to: toName, seconds: edges.seconds[edge], ...endpoints }
-        else if (kind !== ALIGHT) {
-          const lineIndex = nodeLine[kind === WAIT ? to : node]
+        if (kind === WALK || kind === TRANSFER) leg = { mode: 'walk', from: fromName, to: toName, seconds: edges.seconds[edge], ...endpoints }
+        else if (kind !== ALIGHT && kind !== BOARD && kind !== LINK) {
+          const lineIndex = nodeLine[node]
           const line = network.lines[lineIndex]
-          leg = { mode: kind === WAIT ? 'wait' : line.mode, from: fromName, to: toName,
+          leg = { mode: line.mode, from: fromName, to: toName,
             seconds: edges.seconds[edge], line: line.name, lineId: line.id, ...endpoints,
-            ...(kind === WAIT ? {} : { fromIndex: Math.floor((node - lineOffsets[lineIndex]) / 2),
-              toIndex: Math.floor((to - lineOffsets[lineIndex]) / 2) }) }
+            fromIndex: Math.floor((node - lineOffsets[lineIndex]) / 2),
+            toIndex: Math.floor((to - lineOffsets[lineIndex]) / 2) }
         }
         if (leg) {
           const previous = legs.at(-1)
@@ -295,13 +329,11 @@ export function directStops(network: TransitNetwork, destination: Point, maxMinu
     for (let i = line.stops.length - 1; i >= 0; i--) {
       const stop = byId.get(line.stops[i])!
       const running = i + 1 < line.stops.length ? line.seconds[i] + onward : Infinity
-      const seconds = line.waitSeconds + running
+      const seconds = running
       if (exit > i && line.pickup?.[i] !== false && seconds <= maxMinutes * 60 && seconds < (best.get(stop.id)?.seconds ?? Infinity)) {
         const end = byId.get(line.stops[exit])!
         const tail = tails.get(end.id)!
         best.set(stop.id, { ...stop, seconds, boardings: 1, legs: [
-          { mode: 'wait', from: stop.name, to: stop.name, seconds: line.waitSeconds, line: line.name, lineId: line.id,
-            fromStopId: stop.id, toStopId: stop.id },
           { mode: line.mode, from: stop.name, to: end.name, seconds: running - tail, line: line.name, lineId: line.id,
             fromStopId: stop.id, toStopId: end.id, fromIndex: i, toIndex: exit },
           { mode: 'walk', from: end.name, to: '목적지', seconds: tail, fromStopId: end.id },

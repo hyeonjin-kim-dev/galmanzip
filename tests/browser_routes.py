@@ -5,7 +5,7 @@ from browser_support import BASE, NETWORK, choose, includes_selection, line, pre
 CURVED = dict(NETWORK,
     stops=NETWORK['stops'] + [dict(id='BEND', name='경유 정류장', lat=37.45, lng=127.17)],
     lines=[dict(line('32번', ['A', 'BEND', 'C'], [300, 300]), mode='bus'),
-           line('검증 첫차', ['X', 'B'], [240]), dict(line('마을 7번', ['B', 'C'], [240]), mode='bus'),
+           line('검증 첫차', ['X', 'B'], [330]), dict(line('마을 7번', ['B', 'C'], [330]), mode='bus'),
            line('검증 완행', ['Y', 'C'], [601])])
 
 
@@ -67,7 +67,10 @@ with sync_playwright() as p:
         search(app)
         fast = app.locator('[data-place-id="fast"]')
         expect(fast.locator('.route-gauge')).to_have_count(1)
-        assert fast.locator('.route-gauge-segment').evaluate_all('(segments) => segments.map(segment => segment.dataset.mode)') == ['wait', 'bus']
+        assert fast.locator('.route-gauge-segment').evaluate_all('(segments) => segments.map(segment => segment.dataset.mode)') == ['bus']
+        expect(fast.locator('.apartment-time')).to_contain_text('약 10분')
+        assert '대기' not in fast.locator('.route-gauge').get_attribute('aria-label')
+        assert '대기' not in fast.locator('.route-details').text_content()
         expect(fast.locator('.route-transit-stops')).to_contain_text('32번')
         expect(fast.locator('.route-transit-stops')).to_contain_text('2개 정류장')
         assert active(app) == []

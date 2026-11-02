@@ -19,10 +19,10 @@ const network = (lines = [line('완행', ['A', 'B', 'C'], [300, 300])]): Transit
   coverage: '검증용 범위', stops, lines, transfers: [],
 })
 
-test('집에서 목적지 방향으로만 탐색하고 대기와 탑승 시간을 합산한다', () => {
+test('집에서 목적지 방향으로 탐색하며 승차 대기 없이 탑승 시간을 합산한다', () => {
   const forward = findReachableStops(network(), destination, 30)
   const origin = forward.stops.find(stop => stop.id === 'A')!
-  assert.equal(origin.seconds, 720)
+  assert.equal(origin.seconds, 600)
   assert.equal(origin.boardings, 1)
   assert.deepEqual(origin.legs.filter(leg => leg.mode === 'rail').map(leg => [leg.from, leg.to, leg.seconds]), [['출발역', '목적지역', 600]])
   const reverse = findReachableStops(network(), stops[0], 30)
@@ -34,15 +34,37 @@ test('출발지 접근 도보와 목적지 하차 후 도보도 제한 시간에
   const home = { ...apartment, lat: apartment.lat + 0.001 }
   const reachable = findReachableStops(network(), end, 30)
   const result = rankApartment(home, end, reachable.stops, 30)!
-  assert.equal(result.seconds, 720 + walkingSeconds(distance(home, stops[0])) + walkingSeconds(distance(stops[2], end)))
+  assert.equal(result.seconds, 600 + walkingSeconds(distance(home, stops[0])) + walkingSeconds(distance(stops[2], end)))
   assert.equal(result.transfers, 0)
   assert.equal(result.legs[0].from, home.name)
 })
 
+for (const mode of ['bus', 'rail'] as const) {
+  test(`${mode} 대기가 길어도 탐색·시간 구간·경로 선택에서 승차 대기를 제외한다`, () => {
+    const graph = network([{ ...line('빠른탑승', ['A', 'C'], [500], 3600), mode },
+      { ...line('느린탑승', ['A', 'C'], [600], 0), mode }])
+    const reachable = findReachableStops(graph, destination, 10)
+    const result = rankApartment(apartment, destination, reachable.stops, 10)!
+    assert.equal(result.seconds, 500)
+    assert.equal(result.transfers, 0)
+    assert.equal(result.legs.find(leg => leg.mode === mode)?.line, '빠른탑승')
+    assert.equal(result.legs.reduce((sum, leg) => sum + leg.seconds, 0), result.seconds)
+    assert.equal(rankApartment(apartment, destination, reachable.stops, 10, 9), null)
+  })
+}
+
+test('대기를 없애도 같은 운행 패턴에 다시 타는 경로의 환승을 보존한다', () => {
+  const graph = network([line('순환 재탑승', ['A', 'B', 'D', 'B', 'C'], [100, 1000, 1000, 100], 3600)])
+  const result = rankApartment(apartment, destination, findReachableStops(graph, destination, 10).stops, 10)!
+  assert.equal(result.seconds, 200)
+  assert.equal(result.transfers, 1)
+  assert.equal(result.legs.filter(leg => leg.mode === 'rail').length, 2)
+})
+
 test('같은 총시간이면 환승이 적은 경로를 고른다', () => {
-  const graph = network([line('직행', ['A', 'C'], [600], 120), line('첫차', ['A', 'B'], [240], 120), line('둘째차', ['B', 'C'], [240], 120)])
+  const graph = network([line('직행', ['A', 'C'], [600], 120), line('첫차', ['A', 'B'], [300], 120), line('둘째차', ['B', 'C'], [300], 120)])
   const result = rankApartment(apartment, destination, findReachableStops(graph, destination, 30).stops, 30)!
-  assert.equal(result.seconds, 720)
+  assert.equal(result.seconds, 600)
   assert.equal(result.transfers, 0)
   assert.equal(result.legs.some(leg => leg.line === '직행'), true)
 })
@@ -50,17 +72,17 @@ test('같은 총시간이면 환승이 적은 경로를 고른다', () => {
 test('환승 경로가 더 빨라도 최대 시간 내 무환승 경로를 우선한다', () => {
   const graph = network([line('직행', ['A', 'C'], [700]), line('첫차', ['A', 'B'], [200]), line('둘째차', ['B', 'C'], [200])])
   const result = rankApartment(apartment, destination, findReachableStops(graph, destination, 30).stops, 30)!
-  assert.equal(result.seconds, 820)
+  assert.equal(result.seconds, 700)
   assert.equal(result.transfers, 0)
-  assert.equal(result.legs.filter(leg => leg.mode === 'wait').length, 1)
+  assert.deepEqual(result.legs.map(leg => leg.mode), ['walk', 'rail', 'walk'])
 })
 
 test('최대 시간과 정확히 같은 결과만 포함하고 10분을 임의로 더하지 않는다', () => {
-  const graph = network([line('직행', ['A', 'C'], [1680])])
+  const graph = network([line('직행', ['A', 'C'], [1800])])
   const reachable = findReachableStops(graph, destination, 30)
   assert.equal(rankApartment(apartment, destination, reachable.stops, 30)?.seconds, 1800)
   assert.equal(rankApartment({ ...apartment, lat: apartment.lat + 0.0001 }, destination, reachable.stops, 30), null)
-  assert.equal(findReachableStops(network([line('직행', ['A', 'C'], [1681])]), destination, 30).stops.some(stop => stop.id === 'A'), false)
+  assert.equal(findReachableStops(network([line('직행', ['A', 'C'], [1801])]), destination, 30).stops.some(stop => stop.id === 'A'), false)
 })
 
 test('승차 불가·하차 불가 정류장에서 이용할 수 없는 경로를 만들지 않는다', () => {
@@ -74,8 +96,8 @@ test('승차 불가·하차 불가 정류장에서 이용할 수 없는 경로�
 
 test('최소 시간 경계는 포함하고 더 빠른 아파트에 우회 경로를 붙여 포함하지 않는다', () => {
   const reachable = findReachableStops(network(), destination, 30)
-  assert.equal(rankApartment(apartment, destination, reachable.stops, 30, 12)?.seconds, 720)
-  assert.equal(rankApartment(apartment, destination, reachable.stops, 30, 13), null)
+  assert.equal(rankApartment(apartment, destination, reachable.stops, 30, 10)?.seconds, 600)
+  assert.equal(rankApartment(apartment, destination, reachable.stops, 30, 11), null)
   assert.equal(rankApartment(destination, destination, reachable.stops, 30, 10), null)
 })
 
@@ -111,8 +133,8 @@ test('중간 정류장의 정차 시간을 포함하고 승차·하차 지점의
   const service = line('정차', ['A', 'B', 'C'], [300, 300])
   service.dwellSeconds = [50, 45, 60]
   const result = findReachableStops(network([service]), destination, 30).stops.find(stop => stop.id === 'A')!
-  assert.equal(result.seconds, 765)
-  assert.equal(result.legs.reduce((sum, leg) => sum + leg.seconds, 0), 765)
+  assert.equal(result.seconds, 645)
+  assert.equal(result.legs.reduce((sum, leg) => sum + leg.seconds, 0), 645)
 })
 
 test('같은 정류장에서 차를 바꾸는 경우에도 최소 환승 시간을 지킨다', () => {
@@ -120,7 +142,7 @@ test('같은 정류장에서 차를 바꾸는 경우에도 최소 환승 시간�
   graph.transfers = [{ from: 'B', to: 'B', seconds: 180 }]
   validateNetwork(graph)
   const result = findReachableStops(graph, destination, 30).stops.find(stop => stop.id === 'A')!
-  assert.equal(result.seconds, 1020)
+  assert.equal(result.seconds, 780)
   assert.equal(result.boardings, 2)
 })
 
@@ -130,7 +152,7 @@ test('주변 정류장을 연쇄 도보로 연결해 지정된 철도 환승 시
     { id: 'F', name: '역 앞 버스 정류장', lat: 37.40005, lng: 127.13 }]
   graph.transfers = [{ from: 'B', to: 'E', seconds: 300 }]
   const result = findReachableStops(graph, destination, 30).stops.find(stop => stop.id === 'A')!
-  assert.equal(result.seconds, 1140)
+  assert.equal(result.seconds, 900)
   assert.equal(result.boardings, 2)
 })
 
@@ -142,17 +164,17 @@ for (const mode of ['bus', 'rail'] as const) {
     assert.ok(found.stops.some(stop => stop.id === 'A' && stop.boardings === 2))
     const result = rankApartment(apartment, destination, indexStops(found.stops)(apartment), 30)!
     assert.equal(result.transfers, 0)
-    assert.equal(result.seconds, 1160)
+    assert.equal(result.seconds, 1040)
     assert.deepEqual(result.legs.filter(leg => leg.mode === 'bus' || leg.mode === 'rail').map(leg => leg.line), ['무환승'])
     assert.equal(result.legs.reduce((sum, leg) => sum + leg.seconds, 0), result.seconds)
   })
 }
 
 test('무환승이 최대 시간을 넘으면 시간 안에 도착하는 환승 경로를 사용한다', () => {
-  const graph = network([line('늦은직행', ['A', 'C'], [1800]), line('첫차', ['A', 'B'], [200]), line('둘째차', ['B', 'C'], [200])])
+  const graph = network([line('늦은직행', ['A', 'C'], [1801]), line('첫차', ['A', 'B'], [200]), line('둘째차', ['B', 'C'], [200])])
   const result = rankApartment(apartment, destination, findReachableStops(graph, destination, 30).stops, 30)!
   assert.equal(result.transfers, 1)
-  assert.equal(result.seconds, 640)
+  assert.equal(result.seconds, 400)
 })
 
 test('이름이 같은 다른 운행 패턴을 붙여 무환승이라고 표시하지 않는다', () => {
@@ -264,9 +286,9 @@ for (const extraOrigin of [false, true]) {
   test(`환승 도보 5분 초과 경로를 빼고 허용되는 대안을 고른다 (다른 출발 ${extraOrigin})`, () => {
     const route = createRouter(walkingAlternatives(extraOrigin))
     const found = route(destination, 30)
-    assert.equal(rankApartment(apartment, destination, found.stops, 30)?.seconds, 1040)
+    assert.equal(rankApartment(apartment, destination, found.stops, 30)?.seconds, 800)
     const result = route.rank(apartment, destination)!
-    assert.equal(result.seconds, 1040)
+    assert.equal(result.seconds, 800)
     assert.equal(result.transfers, 1)
     assert.deepEqual(result.legs.filter(leg => leg.mode === 'rail').map(leg => leg.line), ['적게걷는첫차', '적게걷는둘째차'])
   })
@@ -279,7 +301,7 @@ test('환승 도보는 5분까지 허용하며 다른 도보와 합산해 제한
   route(destination, 30)
   const result = route.rank(apartment, destination)!
   assert.equal(result.transfers, 1)
-  assert.equal(result.seconds, 921)
+  assert.equal(result.seconds, 681)
   assert.equal(result.legs.filter(leg => leg.mode === 'walk').reduce((sum, leg) => sum + leg.seconds, 0), 481)
 })
 
@@ -288,7 +310,7 @@ test('5분 초과로 지정된 버스 환승을 짧은 자동 도보 연결로 �
   graph.lines.forEach(line => { line.mode = 'bus' })
   const route = createRouter(graph)
   route(destination, 30)
-  assert.equal(route.rank(apartment, destination)?.seconds, 1040)
+  assert.equal(route.rank(apartment, destination)?.seconds, 800)
 })
 
 test('여러 환승 구간이 각각 5분 이하면 전체 도보 5분을 넘어도 포함한다', () => {

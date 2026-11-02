@@ -14,7 +14,6 @@ interface ApartmentResultsProps {
 
 const minutes = (seconds: number) => Math.ceil(seconds / 60)
 const describeLeg = (leg: RouteLeg) => {
-  if (leg.mode === 'wait') return `${leg.line} 대기`
   if (leg.mode === 'walk') return `도보 · ${leg.from} → ${leg.to}`
   return `${leg.line} · ${leg.from} → ${leg.to}`
 }
@@ -36,7 +35,7 @@ const ApartmentCard = memo(function ApartmentCard({ apartment, destination, sele
         <span className="apartment-time">약 {minutes(apartment.seconds)}분 <span>· 환승 {apartment.transfers}회</span></span>
         <span className="visually-hidden">지도에서 보기</span>
       </button>
-      <p className="apartment-provider">교통 자료 추정</p>
+      <p className="apartment-provider">교통 자료 추정 · 대기시간 제외</p>
       <p className="apartment-address">{apartment.address}</p>
       <p className="apartment-stop">{apartment.startStop === '도보 이동' ? '목적지까지 도보 이동' : `출발 정류장 · ${apartment.startStop}`}</p>
       <RoutePreview legs={apartment.legs} selected={selected} onSelect={() => onSelect(apartment.id)} />
@@ -97,7 +96,7 @@ export default function ApartmentResults({ snapshot, results, viewLoading, onSor
           {snapshot.source && <p className="results-basis">교통 자료: {snapshot.source.date}{snapshot.source.reference && <> · {snapshot.source.reference}</>}</p>}
           {snapshot.notice && <p>{snapshot.notice}</p>}
           <p>출발·각 환승·도착의 도보 구간이 각각 5분 이하이고 선택한 최대 시간 내인 경로에서 환승 없는 경로를 우선합니다. 자료에 없는 노선 주변 아파트는 누락될 수 있습니다.</p>
-          <p>도보·대기·탑승·환승을 합한 추정 시간입니다. 운행일·시간대, 교통 상황과 실제 보행 경로에 따라 달라집니다. 10분 이상 여유를 두고 카카오맵 길찾기에서 확인해 주세요. 오차가 10분 이내임을 보장하지 않습니다.</p>
+          <p>도보·탑승·환승 도보를 합한 추정 시간이며 버스·지하철을 기다리는 시간은 제외합니다. 운행일·시간대, 교통 상황과 실제 보행 경로에 따라 달라집니다. 10분 이상 여유를 두고 카카오맵 길찾기에서 확인해 주세요. 오차가 10분 이내임을 보장하지 않습니다.</p>
           <p>아파트 위치 정보이며 현재 매물이나 실거래 가격이 아닙니다. 네이버 부동산에서 복사한 단지명으로 매매·전세·월세를 확인하세요. 장소 검색에 등록되지 않은 아파트는 제외됩니다.</p>
           {snapshot.source && <>
             <p>경로·후보 구역 자료: <a href={snapshot.source.url} target="_blank" rel="noopener noreferrer">{snapshot.source.name}</a> · {snapshot.source.date}</p>

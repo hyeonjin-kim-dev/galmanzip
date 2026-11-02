@@ -9,8 +9,8 @@ VIEW_NETWORK = dict(NETWORK,
            dict(id='N', name='주변역', lat=37.4, lng=127.155),
            dict(id='A', name='먼역', lat=37.4, lng=127.1),
            dict(id='Y', name='새로 본 역', lat=37.46, lng=127.2)],
-    lines=[line('주변 직통', ['N', 'C'], [600]), line('먼 직통', ['A', 'C'], [540]),
-           line('새 지역 직통', ['Y', 'C'], [540])])
+    lines=[line('주변 직통', ['N', 'C'], [720]), line('먼 직통', ['A', 'C'], [660]),
+           line('새 지역 직통', ['Y', 'C'], [660])])
 
 
 def homes(page, include_new=False):

@@ -24,7 +24,7 @@ export interface TransitNetwork {
   transfers: { from: string; to: string; seconds: number }[]
 }
 export interface RouteLeg {
-  mode: 'walk' | 'wait' | 'bus' | 'rail'
+  mode: 'walk' | 'bus' | 'rail'
   from: string
   to: string
   seconds: number

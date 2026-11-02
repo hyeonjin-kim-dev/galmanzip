@@ -10,7 +10,7 @@ export function createRouteGeometry(network: TransitNetwork) {
   }
   return (apartment: ApartmentResult, destination: Place): RouteGeometry => ({
     segments: apartment.legs.flatMap((leg, legIndex) => {
-      if (leg.mode === 'wait' || leg.seconds <= 0) return []
+      if (leg.seconds <= 0) return []
       let points: Point[]
       if (leg.mode === 'walk') points = [point(leg.fromStopId, apartment), point(leg.toStopId, destination)]
       else {

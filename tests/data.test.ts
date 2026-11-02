@@ -27,7 +27,11 @@ test('배포한 실제 자료의 내용 해시와 검증 보고서가 일치한�
 
 test('실제 서현역에서 강남역까지 정자 환승의 방향과 지정 시간이 보존된다', async () => {
   const network = await decodeNetwork(bytes(packed))
-  const rail = { ...network, lines: network.lines.filter(line => line.mode === 'rail') }
+  // 대기 제외 후 달라질 수 있는 전체 망의 최단 조합과 구분해, 알려진 실제 두 운행 패턴의 방향을 검사한다.
+  const through = (from: string, to: string) => network.lines.find(line => line.mode === 'rail'
+    && line.stops.indexOf(from) >= 0 && line.stops.indexOf(to) > line.stops.indexOf(from))!
+  const rail = { ...network, lines: [through('RS_ACC1_S-1-1855', 'RS_ACC1_S-1-1857'),
+    through('RS_ACC1_S-1-4312', 'RS_ACC1_S-1-4307')] }
   const result = findReachableStops(rail, { lat: 37.498103, lng: 127.028079 }, 90)
   const seohyeon = result.stops.find(stop => stop.id === 'RS_ACC1_S-1-1855')!
   assert.ok(seohyeon)

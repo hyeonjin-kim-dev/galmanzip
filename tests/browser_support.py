@@ -21,8 +21,8 @@ def line(name, stops, seconds):
 
 
 NETWORK = dict(version=1, status='ready', stops=STOPS, transfers=[],
-               lines=[line('검증 직행', ['A', 'C'], [600]), line('검증 첫차', ['X', 'B'], [240]),
-                      line('검증 둘째차', ['B', 'C'], [240]), line('검증 완행', ['Y', 'C'], [601]),
+               lines=[line('검증 직행', ['A', 'C'], [660]), line('검증 첫차', ['X', 'B'], [330]),
+                      line('검증 둘째차', ['B', 'C'], [330]), line('검증 완행', ['Y', 'C'], [661]),
                       line('검증 먼 노선', ['Z', 'C'], [2000]), line('검증 빠른 환승', ['A', 'B'], [50])],
                source=dict(name='브라우저 검증용 자료', url='https://example.org', date='2025-03-04', license='검증 전용'),
                coverage='실제 서비스 자료가 아닌 검증용 교통망')

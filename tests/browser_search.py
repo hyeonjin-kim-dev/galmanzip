@@ -280,16 +280,19 @@ with sync_playwright() as p:
           ];
         }''')
         choose(page, touch=mobile)
+        page.get_by_role('combobox', name='소요 시간').click()
+        page.get_by_role('option', name='0~10분', exact=True).click()
         started = time.monotonic()
         page.get_by_role('button', name='검색', exact=True).click()
         expect(page.locator('.results-basis')).to_contain_text('2025년 3월 평일 하루', timeout=30000)
         calculated = time.monotonic() - started
         expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=90000)
         show_all(page)
-        expect(page.locator('.apartment-card')).to_have_count(1)
-        expect(page.locator('.test-cluster')).to_have_text('1')
+        expect(page.locator('.apartment-card')).to_have_count(2)
+        expect(page.locator('.test-cluster')).to_have_text('2')
         page.locator('[data-place-id="fast"] summary').click()
-        expect(page.locator('[data-place-id="fast"] .route-details')).to_contain_text('정자역 → 서현역.AK플라자')
+        expect(page.locator('[data-place-id="fast"] .route-details')).to_contain_text('정자(수인분당선) → 서현')
+        expect(page.locator('[data-place-id="fast"] .apartment-time')).to_contain_text('약 4분')
         assert len(compressed) == 1, compressed
         assert not errors, errors
         assert page.evaluate('localStorage.length + sessionStorage.length') == 0
