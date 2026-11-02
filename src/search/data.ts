@@ -1,6 +1,6 @@
 import { validateNetwork } from './routing.ts'
 
-export async function decodeNetwork(bytes: ArrayBuffer) {
+export async function decodeJson(bytes: ArrayBuffer): Promise<unknown> {
   const header = new Uint8Array(bytes, 0, Math.min(2, bytes.byteLength))
   let value: unknown
   if (header[0] === 0x1f && header[1] === 0x8b) {
@@ -14,7 +14,11 @@ export async function decodeNetwork(bytes: ArrayBuffer) {
     try { value = JSON.parse(new TextDecoder().decode(bytes)) }
     catch { throw new Error('교통 자료의 JSON 형식이 올바르지 않습니다.') }
   }
-  return validateNetwork(value)
+  return value
+}
+
+export async function decodeNetwork(bytes: ArrayBuffer) {
+  return validateNetwork(await decodeJson(bytes))
 }
 
 async function download(url: string | URL, cache?: RequestCache) {

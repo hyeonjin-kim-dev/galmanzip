@@ -1,0 +1,56 @@
+name: 버스 도로 좌표 준비
+
+on:
+  push:
+    branches: [main]
+    paths: [config/bus-shapes-request.json]
+  workflow_dispatch:
+    inputs:
+      route_id:
+        description: 노선 ID (빈 값이면 아직 준비되지 않은 전체 노선)
+        default: '206000007'
+      max_requests:
+        description: 이번 실행의 최대 API 요청 수
+        default: '200'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bus-road-shapes
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: 실제 버스 노선 좌표 준비
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: 소스 가져오기
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Node.js 준비
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: 좌표 처리 검사
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: 공공데이터 좌표 수집과 대조
+        env:
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+          BUS_SHAPE_ROUTE_ID: ${{ inputs.route_id }}
+          BUS_SHAPE_MAX_REQUESTS: ${{ inputs.max_requests || '200' }}
+          PREPARATION_TRIGGER: ${{ github.event_name }}
+        run: |
+          if [ "$PREPARATION_TRIGGER" = "push" ]; then
+            python3 scripts/prepare-bus-shapes.py --request config/bus-shapes-request.json --output /tmp/galmanzip-bus-shapes
+          else
+            python3 scripts/prepare-bus-shapes.py --output /tmp/galmanzip-bus-shapes
+          fi
+      - name: 배포 전 좌표 검증
+        run: node --experimental-strip-types scripts/validate-bus-shapes.ts /tmp/galmanzip-bus-shapes
+      - name: 검증한 좌표와 보고서 보관
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: bus-road-shapes
+          path: /tmp/galmanzip-bus-shapes
+          retention-days: 7

@@ -277,12 +277,19 @@ export default function KakaoMap({ results, destination, selection, allResults, 
           <p role="alert">{routeView.message}</p>
           <button type="button" onClick={() => onSelect(selected.id)}>경로 다시 표시</button>
         </> : <>
-          <p role="status">{routeView.status === 'loading' ? '경로를 표시하고 있어요.' : '정류장 연결 경로'}</p>
+          <p role="status">{routeView.status === 'loading' ? '경로를 표시하고 있어요.' : geometry?.roadBusLines.length ? '버스 도로 경로' : '정류장 연결 경로'}</p>
           <div className="map-route-legend">
             <span className="map-route-walk">점선: 도보</span><span>진한 실선: 탑승 구간</span>
             {!!geometry?.busLines.length && <span className="map-route-context">연한 실선: 버스 전체 노선</span>}
           </div>
-          <small>실제 도로·보행 경로와 다를 수 있어요.</small>
+          <small>{geometry?.roadBusLines.length
+            ? selected.legs.some(leg => leg.mode === 'bus' && !geometry.roadBusLines.includes(leg.lineId!))
+              ? '일부 버스는 정류장 연결선이에요. 도보·지하철도 실제 경로와 다를 수 있어요.'
+              : '도보·지하철은 실제 경로와 다를 수 있어요.'
+            : '실제 도로·보행 경로와 다를 수 있어요.'}</small>
+          {geometry?.sources.map(source => <small key={`${source.url}:${source.date}`}>
+            버스 경로: <a href={source.url} target="_blank" rel="noopener noreferrer">{source.name}</a> · {source.date}
+          </small>)}
         </>}
       </aside>}
       {status === 'ready' && <div className="map-controls" role="group" aria-label="지도 조작">

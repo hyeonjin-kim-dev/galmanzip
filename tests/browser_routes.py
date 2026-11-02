@@ -1,4 +1,6 @@
 """시간 구성·선택 경로·비동기 경합·경로 표시 실패를 브라우저에서 검증한다."""
+import gzip
+import json
 from playwright.sync_api import sync_playwright, expect
 from browser_support import BASE, NETWORK, choose, includes_selection, line, prepare
 
@@ -121,6 +123,51 @@ with sync_playwright() as p:
         assert not errors, errors
         context.close()
         print(mode, '직행좌석 102번 빨강·지하철/마을버스 색상·게이지/지도/전체 노선 일치·밝은 노선 글자 대비 검증 통과', flush=True)
+
+    # 공개 배포 자료와 분리된 선형으로 실제 도로 좌표가 있을 때의 표시 경로를 검사한다.
+    road_points = [[37.47, 127.2], [37.46, 127.19], [37.4, 127.1], [37.43, 127.135], [37.45, 127.17],
+                   [37.43, 127.16], [37.4, 127.16], [37.46, 127.21], [37.47, 127.22]]
+    road = dict(version=1, lineId='102번', stopIds=CURVED['lines'][0]['stops'], stopIndexes=[0, 2, 4, 6, 8],
+        points=[dict(lat=lat, lng=lng) for lat, lng in road_points], source=dict(name='검증용 GBIS 좌표',
+            url='https://www.data.go.kr/data/15080662/openapi.do', date='2026-11-02', license='검증 전용'))
+    for mode in ('PC', '모바일', 'iframe'):
+        context, page, errors = prepare(browser, mobile=mode == '모바일', network=CURVED)
+        shape_calls = []
+        def shapes(route):
+            shape_calls.append(route.request.url)
+            if route.request.url.endswith('index.json'):
+                route.fulfill(content_type='application/json', body=json.dumps(dict(version=1, patterns={'102번': 'shape-123456abcdef.json.gz'})))
+            else:
+                route.fulfill(content_type='application/octet-stream', body=gzip.compress(json.dumps(road).encode()))
+        context.route('**/data/bus-shapes/**', shapes)
+        app = page
+        if mode == 'iframe':
+            page.set_content(f'<iframe src="{BASE}" style="width:390px;height:700px;border:0" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>')
+            app = page.frame_locator('iframe')
+        choose(app, touch=mode == '모바일')
+        search(app)
+        assert not shape_calls
+        app.locator('[data-place-id="fast"] .route-gauge-button').click()
+        expect(app.get_by_text('버스 도로 경로', exact=True)).to_be_visible()
+        pause(app)
+        assert active(app)[0]['path'] == road_points[2:7]
+        assert active(app, full_bus=True)[0]['path'] == road_points
+        assert active(app)[0]['color'] == active(app, full_bus=True)[0]['color'] == '#E60012'
+        expect(app.locator('.map-route-info').get_by_role('link', name='검증용 GBIS 좌표')).to_be_visible()
+        assert includes_selection(app, 'fast')
+        assert len(shape_calls) == 2
+        app.locator('[data-place-id="fast"] .route-gauge-button').click()
+        pause(app)
+        assert len(shape_calls) == 2
+        app.get_by_role('button', name='찾은 집 모두 보기', exact=True).click()
+        app.locator('[data-place-id="transfer"] .route-gauge-button').click()
+        expect(app.get_by_text('정류장 연결 경로', exact=True)).to_be_visible()
+        expect(app.locator('.map-route-info').get_by_role('link', name='검증용 GBIS 좌표')).to_have_count(0)
+        assert active(app, full_bus=True)[0]['path'] != road_points
+        assert len(shape_calls) == 2
+        assert not errors, errors
+        context.close()
+        print(mode, '선택 구간/전체 노선 도로 좌표·출처·지연 준비·재선택 재사용·미확보 노선 전환 검증 통과', flush=True)
 
     context, page, errors = prepare(browser, network=CURVED)
     choose(page); instrument(page)

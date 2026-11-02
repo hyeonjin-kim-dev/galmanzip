@@ -1,11 +1,13 @@
 import { createRouter } from './routing.ts'
 import { loadNetwork } from './data.ts'
 import { createRouteGeometry } from './geometry.ts'
+import { createBusShapeLoader } from './busShapes.ts'
 import type { Reachability, RoutingTask } from './types.ts'
 
 let ready: ReturnType<typeof loadNetwork> | undefined
 let route: ReturnType<typeof createRouter> | undefined
 let geometry: ReturnType<typeof createRouteGeometry> | undefined
+let busShapes: ReturnType<typeof createBusShapeLoader> | undefined
 let current: { key: string; result: Reachability } | undefined
 
 type Request = RoutingTask & { id: number; url: string }
@@ -16,7 +18,9 @@ self.onmessage = async (event: MessageEvent<Request>) => {
     const network = await (ready ??= loadNetwork(task.url).catch(error => { ready = undefined; throw error }))
     if (task.kind === 'geometry') {
       geometry ??= createRouteGeometry(network)
-      self.postMessage({ id: task.id, result: geometry(task.apartment, task.destination) })
+      busShapes ??= createBusShapeLoader(network, task.url)
+      const shapes = await busShapes(task.apartment)
+      self.postMessage({ id: task.id, result: geometry(task.apartment, task.destination, shapes) })
       return
     }
     route ??= createRouter(network)
