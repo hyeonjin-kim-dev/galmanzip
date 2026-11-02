@@ -3,9 +3,10 @@ from playwright.sync_api import sync_playwright, expect
 from browser_support import BASE, NETWORK, choose, includes_selection, line, prepare
 
 CURVED = dict(NETWORK,
-    stops=NETWORK['stops'] + [dict(id='BEND', name='경유 정류장', lat=37.45, lng=127.17)],
-    lines=[dict(line('32번', ['A', 'BEND', 'C'], [300, 300]), mode='bus'),
-           line('검증 첫차', ['X', 'B'], [330]), dict(line('마을 7번', ['B', 'C'], [330]), mode='bus'),
+    stops=NETWORK['stops'] + [dict(id='BEND', name='경유 정류장', lat=37.45, lng=127.17),
+        dict(id='BUS_START', name='버스 기점', lat=37.47, lng=127.2), dict(id='BUS_END', name='버스 종점', lat=37.47, lng=127.22)],
+    lines=[dict(line('32번', ['BUS_START', 'A', 'BEND', 'C', 'BUS_END'], [1000, 300, 300, 1000]), mode='bus'),
+           line('검증 첫차', ['X', 'B'], [330]), dict(line('마을 7번', ['B', 'C', 'BUS_END'], [330, 1000]), mode='bus'),
            line('검증 완행', ['Y', 'C'], [601])])
 
 
@@ -17,10 +18,12 @@ def pause(app, milliseconds=350):
     evaluate(app, '(element, milliseconds) => new Promise(resolve => setTimeout(resolve, milliseconds))', milliseconds)
 
 
-def active(app):
-    return evaluate(app, '''() => window.__searchTest.polylines.filter(line => line.map && line.options.strokeColor !== '#ffffff')
+def active(app, full_bus=False):
+    return evaluate(app, '''(element, fullBus) => window.__searchTest.polylines.filter(line => line.map && line.options.strokeColor !== '#ffffff'
+        && (fullBus ? line.options.strokeOpacity < 1 : line.options.strokeOpacity === 1))
       .map(line => ({ color: line.options.strokeColor, style: line.options.strokeStyle,
-        path: line.options.path.map(point => [point.getLat(), point.getLng()]) }))''')
+        opacity: line.options.strokeOpacity, weight: line.options.strokeWeight, zIndex: line.options.zIndex, arrow: line.options.endArrow,
+        path: line.options.path.map(point => [point.getLat(), point.getLng()]) }))''', full_bus)
 
 
 def instrument(app):
@@ -74,13 +77,23 @@ with sync_playwright() as p:
         expect(fast.locator('.route-transit-stops')).to_contain_text('32번')
         expect(fast.locator('.route-transit-stops')).to_contain_text('2개 정류장')
         assert active(app) == []
+        assert active(app, full_bus=True) == []
         fast.locator('.route-gauge-button').click()
         expect(app.get_by_text('정류장 연결 경로', exact=True)).to_be_visible()
         pause(app)
         assert includes_selection(app, 'fast')
         assert active(app)[0]['path'] == [[37.4, 127.1], [37.45, 127.17], [37.4, 127.16]]
         assert active(app)[0]['color'] == '#65A30D'
+        full_bus = active(app, full_bus=True)
+        assert len(full_bus) == 1
+        assert full_bus[0]['path'] == [[37.47, 127.2], [37.4, 127.1], [37.45, 127.17], [37.4, 127.16], [37.47, 127.22]]
+        assert full_bus[0]['color'] == active(app)[0]['color']
+        assert 0 < full_bus[0]['opacity'] < .4 and full_bus[0]['weight'] < active(app)[0]['weight']
+        assert full_bus[0]['zIndex'] < active(app)[0]['zIndex']
+        assert all(not item['arrow'] for item in full_bus + active(app))
+        expect(app.get_by_text('연한 실선: 버스 전체 노선', exact=True)).to_be_visible()
         assert evaluate(app, '() => window.__searchTest.map.getBounds().getNorthEast().getLat()') >= 37.45
+        assert evaluate(app, '() => window.__searchTest.map.getBounds().getNorthEast().getLat()') < 37.47
         evaluate(app, '() => window.__previousLines = window.__searchTest.polylines.filter(line => line.map)')
         app.get_by_role('button', name='찾은 집 모두 보기', exact=True).click()
         transfer = app.locator('[data-place-id="transfer"]')
@@ -89,6 +102,9 @@ with sync_playwright() as p:
         pause(app)
         assert len(active(app)) == 2
         assert len(set(line['color'] for line in active(app))) == 2
+        assert len(active(app, full_bus=True)) == 1
+        assert active(app, full_bus=True)[0]['path'] == [[37.4, 127.13], [37.4, 127.16], [37.47, 127.22]]
+        assert active(app, full_bus=True)[0]['color'] == active(app)[1]['color']
         assert evaluate(app, '() => window.__previousLines.every(line => !line.map)')
         assert evaluate(app, '() => window.__reachCompact')
         assert evaluate(app, '() => document.documentElement.scrollWidth <= innerWidth')
@@ -97,7 +113,7 @@ with sync_playwright() as p:
         transfer.locator('.route-preview').screenshot(path=f'/tmp/galmanzip-route-card-{mode}.png')
         assert not errors, errors
         context.close()
-        print(mode, '시간 게이지·수단/지도 색상·경유 정류장 전체 맞춤·이전 경로 제거 검증 통과', flush=True)
+        print(mode, '버스 전체 노선과 탑승 구간 구별·색상·실제 이동 구간 맞춤·이전 노선 제거 검증 통과', flush=True)
 
     context, page, errors = prepare(browser, network=CURVED)
     choose(page); instrument(page)
@@ -119,6 +135,8 @@ with sync_playwright() as p:
     pause(page, 1400)
     expect(page.locator('.map-route-info > strong')).to_contain_text('검증 환승 아파트')
     assert len(active(page)) == 2
+    assert len(active(page, full_bus=True)) == 1
+    assert active(page, full_bus=True)[0]['path'][0] == [37.4, 127.13]
     assert evaluate(page, '() => window.__routeTasks.filter(task => task.kind === "geometry").length') == 2
     assert not errors, errors
     context.close()
@@ -138,6 +156,7 @@ with sync_playwright() as p:
     assert evaluate(page, '() => window.__searchTest.map.getCenter().getLng()') == 127.14
     assert evaluate(page, '() => window.__searchTest.fitCount') == 1
     assert len(active(page)) == 1
+    assert len(active(page, full_bus=True)) == 1
     page.get_by_role('button', name='찾은 집 모두 보기', exact=True).click()
     page.locator('[data-place-id="fast"] .route-gauge-button').click()
     pause(page)
@@ -150,6 +169,7 @@ with sync_playwright() as p:
     page.get_by_role('combobox', name='소요 시간').click()
     page.get_by_role('option', name='20분 ~ 30분', exact=True).click()
     assert active(page) == []
+    assert active(page, full_bus=True) == []
     expect(page.locator('.map-route-info')).to_have_count(0)
     assert not errors, errors
     context.close()
@@ -161,10 +181,12 @@ with sync_playwright() as p:
     page.locator('[data-place-id="fast"] .route-gauge-button').click()
     expect(page.get_by_role('alert')).to_contain_text('운행 순서')
     assert active(page) == []
+    assert active(page, full_bus=True) == []
     expect(page.locator('.apartment-card')).not_to_have_count(0)
     page.get_by_role('button', name='경로 다시 표시', exact=True).click()
     expect(page.get_by_text('정류장 연결 경로', exact=True)).to_be_visible()
     assert len(active(page)) == 1
+    assert len(active(page, full_bus=True)) == 1
     assert not errors, errors
     context.close()
     print('잘못된 선형을 그리지 않고 오류 안내·재시도·기존 목록 유지 검증 통과', flush=True)
@@ -178,6 +200,8 @@ with sync_playwright() as p:
     page.locator('.route-gauge-button').click()
     expect(page.get_by_text('정류장 연결 경로', exact=True)).to_be_visible()
     assert len(active(page)) == 1 and active(page)[0]['style'] == 'shortdash'
+    assert active(page, full_bus=True) == []
+    expect(page.get_by_text('연한 실선: 버스 전체 노선', exact=True)).to_have_count(0)
     assert active(page)[0]['path'][0] == [37.4005, 127.16]
     assert active(page)[0]['path'][-1] == [37.4, 127.16]
     assert not errors, errors

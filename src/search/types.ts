@@ -50,6 +50,7 @@ export interface ReachabilitySummary extends Omit<Reachability, 'stops'> {
 }
 export interface RouteGeometry {
   segments: { legIndex: number; points: Point[] }[]
+  busLines: { legIndex: number; points: Point[] }[]
 }
 export type RoutingTask = { kind: 'reach'; destination: Place; minutes: number }
   | { kind: 'rank'; destination: Place; minutes: number; places: Place[]; minMinutes?: number }

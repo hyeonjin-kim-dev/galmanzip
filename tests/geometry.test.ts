@@ -23,6 +23,7 @@ test('출발·도착만 잇지 않고 이름이 같은 경유 정류장도 순�
   const before = structuredClone(result)
   const geometry = createRouteGeometry(graph)(result, place(2))
   assert.deepEqual(geometry.segments.map(segment => segment.points), [points(['A', 'B', 'C'])])
+  assert.deepEqual(geometry.busLines, [])
   assert.equal(result.legs.find(leg => leg.mode === 'rail')!.toIndex! - result.legs.find(leg => leg.mode === 'rail')!.fromIndex!, 2)
   assert.deepEqual(result, before)
 })
@@ -67,6 +68,50 @@ test('도보 전용은 가상의 버스·지하철 구간 없이 표시한다', 
   const geometry = createRouteGeometry(graph)(result, end)
   assert.equal(geometry.segments.length, 1)
   assert.equal(result.legs[geometry.segments[0].legIndex].mode, 'walk')
+  assert.deepEqual(geometry.busLines, [])
+})
+
+test('버스 전체 노선은 승하차 전후와 순환 정류장을 포함하고 같은 이름의 반대 방향과 구분한다', () => {
+  const graph = network([
+    { ...line('정방향', ['D', 'A', 'B', 'C', 'D'], [100, 300, 300, 100]), name: '32번', mode: 'bus' },
+    { ...line('반대방향', ['D', 'C', 'B', 'A', 'D'], [100, 300, 300, 100]), name: '32번', mode: 'bus' },
+  ]), router = createRouter(graph)
+  router(place(2), 30)
+  const result = router.rank(place(0), place(2))!
+  const geometry = createRouteGeometry(graph)(result, place(2))
+  const legIndex = result.legs.findIndex(leg => leg.mode === 'bus')
+  assert.equal(result.legs[legIndex].lineId, '정방향')
+  assert.deepEqual(geometry.segments.map(segment => segment.points), [points(['A', 'B', 'C'])])
+  assert.deepEqual(geometry.busLines, [{ legIndex, points: points(['D', 'A', 'B', 'C', 'D']) }])
+})
+
+test('버스를 갈아타면 이용한 버스마다 전체 노선과 탑승 구간을 구분한다', () => {
+  const graph = network([
+    { ...line('첫 버스', ['A', 'B'], [300]), mode: 'bus' },
+    { ...line('둘째 버스', ['D', 'C'], [300]), mode: 'bus' },
+  ])
+  graph.transfers = [{ from: 'B', to: 'D', seconds: 120 }]
+  const router = createRouter(graph)
+  router(place(2), 30)
+  const result = router.rank(place(0), place(2))!
+  assert.equal(result.transfers, 1)
+  const geometry = createRouteGeometry(graph)(result, place(2))
+  assert.deepEqual(geometry.busLines, [
+    { legIndex: result.legs.findIndex(leg => leg.lineId === '첫 버스'), points: points(['A', 'B']) },
+    { legIndex: result.legs.findIndex(leg => leg.lineId === '둘째 버스'), points: points(['D', 'C']) },
+  ])
+})
+
+test('같은 버스 운행 패턴에 재승차해도 전체 노선을 겹쳐 그리지 않는다', () => {
+  const graph = network([{ ...line('같은 버스', ['A', 'B', 'D', 'C'], [300, 1000, 300]), mode: 'bus' }])
+  graph.transfers = [{ from: 'B', to: 'D', seconds: 120 }]
+  const router = createRouter(graph)
+  router(place(2), 15)
+  const result = router.rank(place(0), place(2))!
+  assert.equal(result.transfers, 1)
+  assert.equal(result.legs.filter(leg => leg.mode === 'bus').length, 2)
+  const geometry = createRouteGeometry(graph)(result, place(2))
+  assert.deepEqual(geometry.busLines, [{ legIndex: result.legs.findIndex(leg => leg.mode === 'bus'), points: points(['A', 'B', 'D', 'C']) }])
 })
 
 test('달라진 운행 패턴을 이름이나 첫 정류장 일치만으로 추측해서 그리지 않는다', () => {

@@ -215,6 +215,13 @@ export default function KakaoMap({ results, destination, selection, allResults, 
     const { maps, map } = context
     const appearances = routeAppearance(selected.legs)
     const overlays: { setMap(map: MapInstance | null): void }[] = []
+    for (const busLine of geometry.busLines) {
+      const line = new maps.Polyline({ path: busLine.points.map(point => new maps.LatLng(point.lat, point.lng)),
+        strokeWeight: 5, strokeColor: appearances[busLine.legIndex].color, strokeOpacity: .22,
+        strokeStyle: 'solid', endArrow: false, zIndex: 1 })
+      line.setMap(map)
+      overlays.push(line)
+    }
     for (const segment of geometry.segments) {
       const leg = selected.legs[segment.legIndex], appearance = appearances[segment.legIndex]
       const path = segment.points.map(point => new maps.LatLng(point.lat, point.lng))
@@ -271,7 +278,10 @@ export default function KakaoMap({ results, destination, selection, allResults, 
           <button type="button" onClick={() => onSelect(selected.id)}>경로 다시 표시</button>
         </> : <>
           <p role="status">{routeView.status === 'loading' ? '경로를 표시하고 있어요.' : '정류장 연결 경로'}</p>
-          <div className="map-route-legend"><span className="map-route-walk">점선: 도보</span><span>실선: 버스·지하철</span></div>
+          <div className="map-route-legend">
+            <span className="map-route-walk">점선: 도보</span><span>진한 실선: 탑승 구간</span>
+            {!!geometry?.busLines.length && <span className="map-route-context">연한 실선: 버스 전체 노선</span>}
+          </div>
           <small>실제 도로·보행 경로와 다를 수 있어요.</small>
         </>}
       </aside>}
