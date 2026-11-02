@@ -18,5 +18,5 @@
 - 사용자가 공공데이터포털 인증키의 GitHub 등록을 완료했다고 알렸다. 기존 도로 이탈 개선 작업을 이어 실제 좌표를 수집·대조·반영한다. 인증키 값을 읽거나 채팅으로 요청하지 않는다.
 - 102번의 실제 노선 좌표와 경유정류소를 먼저 수집하도록 준비 요청을 작성했다. 성공한 실행의 결과물과 기존 KTDB 정류장 순서·위치를 대조하고 검증한 실제 자료만 배포한다. [후속 절차](docs/bus-route-shapes.md)를 따른다.
 - `b33390c`(`102번 버스 도로 좌표 수집 요청`)를 `main`과 `work`에 푸시했다. [자료 준비 #1](https://github.com/hyeonjin-kim-dev/galmanzip/actions/runs/41400562922)은 최초 실행과 재실행 모두 `DATA_GO_KR_SERVICE_KEY`가 빈 값으로 전달되어 API 요청 전에 중단됐다. 실제 도로 좌표는 아직 수집되지 않았고 공개 색인도 비어 있다.
-- 사용자에게 등록 위치(Repository secrets / Environment secrets / Variables)와 항목 이름만 확인 요청했다. 키 값은 요청하지 않았으며 등록 정보가 확인되면 작업을 이어간다. 준비 실행의 최신 시도 작업 ID는 `125143083808`이다.
+- 사용자가 `Secrets and variables`의 `Agents` 메뉴에 등록했다고 답했다. 공식 안내를 확인해 `Actions` → `Secrets` → `New repository secret`의 정확한 경로와 직접 링크를 안내했다. 키 값은 요청하지 않았으며 Actions의 Repository secret 등록 후 자료 준비를 다시 실행한다. 준비 실행의 최신 시도 작업 ID는 `125143083808`이다.
 - [앱 배포 #36](https://github.com/hyeonjin-kim-dev/galmanzip/actions/runs/41400562911)의 검사·빌드·게시가 성공했다. 이는 요청 파일 반영에 따른 일반 배포이며 실제 도로 좌표 적용 완료를 의미하지 않는다.

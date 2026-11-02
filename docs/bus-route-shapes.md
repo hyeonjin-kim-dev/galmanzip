@@ -15,7 +15,7 @@ API는 자료를 미리 준비할 때 사용한다. 앱은 GitHub Pages에 배�
 1. [공공데이터포털](https://www.data.go.kr/)에 로그인한다.
 2. [경기도 버스노선 조회](https://www.data.go.kr/data/15080662/openapi.do)를 열고 `활용신청`을 누른다. 활용 목적에는 `갈만집에서 버스 노선 도로 좌표를 미리 준비하여 정적 지도 경로로 표시`라고 입력하고 신청을 완료한다.
 3. 마이페이지의 활용 신청 현황에서 해당 서비스가 승인되었는지 확인한다. 승인된 상세 화면에서 `일반 인증키(Decoding)`를 복사한다. 다른 API의 승인이나 Kakao JavaScript 키로 대체하지 않는다.
-4. [저장소의 Actions 비밀 값 설정](https://github.com/hyeonjin-kim-dev/galmanzip/settings/secrets/actions)을 열고 `New repository secret`을 누른다.
+4. [저장소의 Actions 비밀 값 설정](https://github.com/hyeonjin-kim-dev/galmanzip/settings/secrets/actions)을 연다. 메뉴로 이동할 때는 `Settings` → `Secrets and variables` → `Actions` → `Secrets` → `New repository secret` 순서다. 이번 자료 준비는 GitHub Actions에서 실행하므로 이 위치의 Repository secret이 필요하다. 사용자가 선택했던 `Agents` 메뉴와 혼동하지 않는다. [GitHub 공식 안내](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets#creating-secrets-for-a-repository)를 참조한다.
 5. `Name`에 `DATA_GO_KR_SERVICE_KEY`, `Secret`에 복사한 인증키를 입력하고 `Add secret`을 누른다. 인증키를 채팅이나 코드에 적지 않는다.
 6. 에이전트에게 등록 완료를 알린다. 자료 준비 재실행·검증·커밋·배포는 에이전트가 진행한다. 사용자가 매번 `Run workflow`를 누르는 절차가 아니다.
 
