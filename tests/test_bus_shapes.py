@@ -83,6 +83,68 @@ class ShapeTest(unittest.TestCase):
                 client.get('getBusRouteLineListv2', '206000007')
             self.assertEqual(send.call_count, 2)
 
+    def test_transient_failure_retries_within_budget_but_auth_failure_does_not(self):
+        with patch.object(BUILD, 'urlopen', side_effect=[HTTPError('https://example.org/?serviceKey=PRIVATE_KEY', 503, 'Unavailable', {}, io.BytesIO()),
+                                                       io.BytesIO(b'<response/>')]) as send, patch.object(BUILD.time, 'sleep'):
+            client = BUILD.Client('PRIVATE_KEY', 2)
+            self.assertEqual(client.get('getBusRouteLineListv2', '206000007'), b'<response/>')
+            self.assertEqual((client.calls, send.call_count), (2, 2))
+        with patch.object(BUILD, 'urlopen', side_effect=HTTPError('https://example.org/?serviceKey=PRIVATE_KEY', 403, 'Forbidden', {}, io.BytesIO())) as send:
+            with self.assertRaises(BUILD.ApiError):
+                BUILD.Client('PRIVATE_KEY', 10).get('getBusRouteLineListv2', '206000007')
+            self.assertEqual(send.call_count, 1)
+
+    def write_network(self, root, lines):
+        root.mkdir(exist_ok=True)
+        (root / 'transit.json').write_text(json.dumps(dict(asset='transit-test.json.gz')))
+        (root / 'transit-test.json.gz').write_bytes(gzip.compress(json.dumps(dict(stops=list(STOPS.values()), lines=lines)).encode()))
+
+    def test_bulk_keeps_valid_data_when_a_later_api_request_fails(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root, output = Path(folder) / '자료', Path(folder) / '좌표'
+            later = {**LINE, 'id': 'BR_TAGO_GGB206000008:abcdef123456'}
+            self.write_network(root, [LINE, later])
+            responses = iter([xml_rows(POINTS, 'busRouteLineList', 'lineSeq'),
+                              xml_rows(STATIONS, 'busRouteStationList', 'stationSeq', 'stationId')])
+            def fetch(client, operation, identifier):
+                client.calls += 1
+                if identifier == '206000008':
+                    raise BUILD.ApiError('버스 노선 API 시간 초과')
+                return next(responses)
+            with patch.object(BUILD.Client, 'get', fetch), redirect_stdout(io.StringIO()):
+                report = BUILD.prepare(root, output, 'PRIVATE_KEY', '', 10)
+            index = json.loads((output / 'index.json').read_text())
+            self.assertIn(LINE['id'], index['patterns'])
+            self.assertEqual(report['preparedPatterns'], 1)
+            self.assertEqual(report['attemptedRoutes'], ['206000007'])
+            self.assertFalse(report['complete'])
+            self.assertEqual(report['remainingRoutes'], 1)
+            self.assertIn('시간 초과', report['stopReason'])
+
+    def test_bulk_resumes_without_repeating_unavailable_routes_and_refreshes_next_day(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / '자료'
+            missing = {**LINE, 'id': 'BR_TAGO_GGB100000001:abcdef123456'}
+            self.write_network(root, [LINE, missing])
+            responses = iter([xml_rows(POINTS, 'busRouteLineList', 'lineSeq'),
+                              xml_rows(STATIONS, 'busRouteStationList', 'stationSeq', 'stationId'),
+                              b'<response><resultCode>4</resultCode></response>'])
+            with patch.object(BUILD, 'urlopen', side_effect=lambda *args, **kwargs: io.BytesIO(next(responses))), patch.object(BUILD.time, 'sleep'), redirect_stdout(io.StringIO()):
+                first = BUILD.prepare(root, root / 'bus-shapes', 'PRIVATE_KEY', '', 10)
+            self.assertTrue(first['complete'])
+            self.assertEqual(first['rejected'], {'노선 좌표 없음': 1})
+            with patch.object(BUILD, 'urlopen') as send, redirect_stdout(io.StringIO()):
+                second = BUILD.prepare(root, Path(folder) / '재개', 'PRIVATE_KEY', '', 10)
+            self.assertEqual(second['requests'], 0)
+            send.assert_not_called()
+            audit_path = root / 'bus-shapes' / 'audit.json'
+            audit = json.loads(audit_path.read_text())
+            audit_path.write_text(json.dumps({**audit, 'date': '2000-01-01'}))
+            with patch.object(BUILD, 'urlopen', return_value=io.BytesIO(b'<response><resultCode>4</resultCode></response>')) as send, redirect_stdout(io.StringIO()):
+                refreshed = BUILD.prepare(root, Path(folder) / '재확인', 'PRIVATE_KEY', '', 10)
+            self.assertEqual(refreshed['requests'], 1)
+            self.assertEqual(send.call_count, 1)
+
     def test_preparation_publishes_only_verified_geometry_without_credentials(self):
         with tempfile.TemporaryDirectory() as folder:
             root, output = Path(folder) / '자료', Path(folder) / '좌표'

@@ -31,7 +31,9 @@ class DataError(ValueError):
 
 
 class ApiError(RuntimeError):
-    pass
+    def __init__(self, message, retryable=False):
+        super().__init__(message)
+        self.retryable = retryable
 
 
 def safe_api_error_code(payload):
@@ -64,7 +66,7 @@ def xml_rows(payload, name, sequence, identifier=None):
         if code == '4':
             return []
         if code != '0':
-            raise ApiError('API 인증·이용 한도·서비스 상태를 확인해 주세요.')
+            raise ApiError(f'API 인증·이용 한도·서비스 상태를 확인해 주세요. 제공기관 코드 {safe_api_error_code(payload)}.')
         rows = []
         for node in root.findall('.//' + name):
             point = {'lat': float(node.findtext('y', '')), 'lng': float(node.findtext('x', ''))}
@@ -181,6 +183,15 @@ class Client:
         self.key, self.budget, self.calls = unquote(key.strip()), budget, 0
 
     def get(self, operation, route_id):
+        for attempt in range(3):
+            try:
+                return self._get_once(operation, route_id)
+            except ApiError as error:
+                if not error.retryable or attempt == 2 or self.calls >= self.budget:
+                    raise
+                time.sleep(2 ** attempt)
+
+    def _get_once(self, operation, route_id):
         if self.calls >= self.budget:
             raise ApiError('설정한 요청 수에 도달했습니다.')
         self.calls += 1
@@ -202,11 +213,13 @@ class Client:
                 code = '미제공'
             finally:
                 error.close()
-            raise ApiError(f'버스 노선 API 응답 오류: HTTP {error.code}, 제공기관 코드 {code}.') from None
+            raise ApiError(f'버스 노선 API 응답 오류: HTTP {error.code}, 제공기관 코드 {code}.',
+                           retryable=error.code == 429 or 500 <= error.code <= 599) from None
         except (URLError, TimeoutError, OSError) as error:
             reason = error.reason if isinstance(error, URLError) else error
             kind = '인증서·TLS' if isinstance(reason, ssl.SSLError) else 'DNS' if isinstance(reason, socket.gaierror) else '시간 초과' if isinstance(reason, TimeoutError) else '연결'
-            raise ApiError(f'버스 노선 API {kind} 오류입니다. URL과 인증키는 출력하지 않습니다.') from None
+            raise ApiError(f'버스 노선 API {kind} 오류입니다. URL과 인증키는 출력하지 않습니다.',
+                           retryable=not isinstance(reason, ssl.SSLError)) from None
 
 
 def prepare(network_dir, output, key, route_id='', max_requests=200):
@@ -233,18 +246,39 @@ def prepare(network_dir, output, key, route_id='', max_requests=200):
                     shutil.copyfile(existing / asset, output / asset)
     client, reasons, added = Client(key, max_requests), Counter(), 0
     date = datetime.now(ZoneInfo('Asia/Seoul')).date().isoformat()
+    attempted, stop_error = set(), None
+    if (existing / 'audit.json').exists():
+        previous = json.loads((existing / 'audit.json').read_text())
+        # 같은 원본·같은 날짜의 실패한 대조만 재사용한다. 노선 변경 이후까지 제외하지 않는다.
+        if previous.get('networkAsset') == manifest['asset'] and previous.get('date') == date:
+            attempted = {value for value in previous.get('attemptedRoutes', []) if isinstance(value, str) and value in groups}
+            if not route_id:
+                reasons.update(previous.get('rejected', {}))
     for identifier, lines in sorted(groups.items(), key=lambda item: (item[0] != '206000007', item[0])):
         if not route_id:
             lines = [line for line in lines if line['id'] not in index['patterns']]
-            if not lines:
+            if not lines or identifier in attempted:
                 continue
         if client.calls + 2 > max_requests:
             break
-        road = xml_rows(client.get('getBusRouteLineListv2', identifier), 'busRouteLineList', 'lineSeq')
+        try:
+            road = xml_rows(client.get('getBusRouteLineListv2', identifier), 'busRouteLineList', 'lineSeq')
+            stations = xml_rows(client.get('getBusRouteStationListv2', identifier), 'busRouteStationList', 'stationSeq', 'stationId') if road else []
+        except ApiError as error:
+            # 외부 장애로 중단되어도 이미 검증한 좌표는 결과물로 보존한다.
+            stop_error = error
+            break
+        except DataError as error:
+            reasons[str(error)] += len(lines)
+            attempted.add(identifier)
+            continue
+        attempted.add(identifier)
+        if len(attempted) % 50 == 0:
+            print(json.dumps({'checkedRoutes': len(attempted), 'requests': client.calls,
+                              'preparedPatterns': added}, ensure_ascii=False), flush=True)
         if not road:
             reasons['노선 좌표 없음'] += len(lines)
             continue
-        stations = xml_rows(client.get('getBusRouteStationListv2', identifier), 'busRouteStationList', 'stationSeq', 'stationId')
         for line in lines:
             try:
                 shape = make_shape(line, stops, stations, road, date)
@@ -255,11 +289,17 @@ def prepare(network_dir, output, key, route_id='', max_requests=200):
                 added += 1
             except DataError as error:
                 reasons[str(error)] += 1
+    remaining = sum(identifier not in attempted and any(line['id'] not in index['patterns'] for line in lines)
+                    for identifier, lines in groups.items())
     report = {'requests': client.calls, 'preparedPatterns': added, 'publishedPatterns': len(index['patterns']),
-              'rejected': dict(reasons), 'sourceUrl': SOURCE_URL, 'date': date}
+              'rejected': dict(reasons), 'sourceUrl': SOURCE_URL, 'date': date, 'networkAsset': manifest['asset'],
+              'attemptedRoutes': sorted(attempted), 'eligibleRoutes': len(groups), 'remainingRoutes': remaining,
+              'complete': remaining == 0, 'stopReason': str(stop_error) if stop_error else None}
     (output / 'index.json').write_text(json.dumps(index, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     (output / 'audit.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    print(json.dumps(report, ensure_ascii=False), flush=True)
+    print(json.dumps({key: value for key, value in report.items() if key != 'attemptedRoutes'}, ensure_ascii=False), flush=True)
+    if stop_error and not added:
+        raise stop_error
     if not added and (route_id or not index['patterns']):
         raise DataError('조건에 맞는 도로 좌표를 준비하지 못했습니다.')
     referenced = set(index['patterns'].values())
