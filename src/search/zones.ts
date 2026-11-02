@@ -1,5 +1,5 @@
 import { ACCESS_RADIUS, DESTINATION_RADIUS } from './routing.ts'
-import type { Point, ReachableStop } from './types.ts'
+import type { Point, ReachabilitySummary } from './types.ts'
 import { intersects } from './bounds.ts'
 import type { Bounds } from './bounds.ts'
 
@@ -25,7 +25,7 @@ function zone(bounds: Bounds, coverage: Coverage[], depth: number): SearchZone {
     west: Math.max(bounds.west, west), east: Math.min(bounds.east, east), coverage, depth, priority }
 }
 
-export function searchZones(stops: ReachableStop[], destination: Point, maxMinutes: number): SearchZone[] {
+export function searchZones(stops: ReachabilitySummary['stops'], destination: Point, maxMinutes: number): SearchZone[] {
   const grid = 0.08
   const coverage = new Map<string, Coverage>()
   for (const stop of stops) {

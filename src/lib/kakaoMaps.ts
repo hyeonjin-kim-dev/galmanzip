@@ -32,6 +32,8 @@ export interface MapsSdk {
   ) => MapInstance
   LatLngBounds: new () => MapBounds
   Marker: new (options: { position: MapPosition; title?: string }) => MapMarker
+  Polyline: new (options: { path: MapPosition[]; strokeWeight: number; strokeColor: string; strokeOpacity: number;
+    strokeStyle: 'solid' | 'shortdash'; zIndex: number; endArrow?: boolean }) => { setMap(map: MapInstance | null): void }
   CustomOverlay: new (options: { position: MapPosition; content: HTMLElement; yAnchor?: number; zIndex?: number }) => {
     setMap(map: MapInstance | null): void
   }

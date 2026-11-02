@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import type { ApartmentResult, Place, RouteLeg, SearchSnapshot } from '../search/types'
+import RoutePreview from './RoutePreview'
 
 interface ApartmentResultsProps {
   snapshot: SearchSnapshot
@@ -38,6 +39,7 @@ const ApartmentCard = memo(function ApartmentCard({ apartment, destination, sele
       <p className="apartment-provider">교통 자료 추정</p>
       <p className="apartment-address">{apartment.address}</p>
       <p className="apartment-stop">{apartment.startStop === '도보 이동' ? '목적지까지 도보 이동' : `출발 정류장 · ${apartment.startStop}`}</p>
+      <RoutePreview legs={apartment.legs} selected={selected} onSelect={() => onSelect(apartment.id)} />
       <details className="route-details">
         <summary>예상 경로</summary>
         <ol>{apartment.legs.filter(leg => leg.seconds > 0).map((leg, index) => (

@@ -30,6 +30,10 @@ export interface RouteLeg {
   seconds: number
   line?: string
   lineId?: string
+  fromStopId?: string
+  toStopId?: string
+  fromIndex?: number
+  toIndex?: number
 }
 export interface ReachableStop extends Stop {
   seconds: number
@@ -41,6 +45,15 @@ export interface Reachability {
   source: TransitNetwork['source']
   coverage: string
 }
+export interface ReachabilitySummary extends Omit<Reachability, 'stops'> {
+  stops: Pick<ReachableStop, 'id' | 'lat' | 'lng' | 'seconds' | 'boardings'>[]
+}
+export interface RouteGeometry {
+  segments: { legIndex: number; points: Point[] }[]
+}
+export type RoutingTask = { kind: 'reach'; destination: Place; minutes: number }
+  | { kind: 'rank'; destination: Place; minutes: number; places: Place[]; minMinutes?: number }
+  | { kind: 'geometry'; destination: Place; apartment: ApartmentResult }
 export interface ApartmentResult extends Place {
   seconds: number
   transfers: number

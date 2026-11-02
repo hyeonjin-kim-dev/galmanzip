@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 import { gzipSync, gunzipSync } from 'node:zlib'
 import { decodeNetwork, loadNetwork } from '../src/search/data.ts'
 import { findReachableStops, rankApartment } from '../src/search/routing.ts'
+import { createRouteGeometry } from '../src/search/geometry.ts'
 
 const root = new URL('../public/data/', import.meta.url)
 const manifest = JSON.parse(readFileSync(new URL('transit.json', root), 'utf8'))
@@ -57,6 +58,13 @@ test('실제 버스·지하철 자료에서 환승 없이 갈 수 있는 구간�
     assert.equal(result.transfers, 0, mode)
     assert.equal(result.legs.filter(leg => leg.mode === mode).length, 1, mode)
     assert.equal(result.legs.reduce((seconds, leg) => seconds + leg.seconds, 0), result.seconds)
+    const geometry = createRouteGeometry(network)(result, to)
+    const ride = geometry.segments.find(segment => result.legs[segment.legIndex].mode === mode)!
+    const leg = result.legs[ride.legIndex]
+    assert.equal(ride.points.length, leg.toIndex! - leg.fromIndex! + 1)
+    assert.ok(ride.points.length >= 2)
+    assert.deepEqual(ride.points[0], { lat: network.stops.find(stop => stop.id === leg.fromStopId)!.lat,
+      lng: network.stops.find(stop => stop.id === leg.fromStopId)!.lng })
   }
 })
 

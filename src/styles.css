@@ -209,6 +209,7 @@ textarea {
 
 .search-button:focus-visible,
 .apartment-heading:focus-visible,
+.route-gauge-button:focus-visible,
 .apartment-links :focus-visible,
 .results-more:focus-visible,
 summary:focus-visible {
@@ -246,6 +247,24 @@ summary { cursor: pointer; }
 .apartment-address { margin: 8px 0 0; }
 .apartment-stop { margin: 4px 0 10px; color: #6d747b; font-size: 13px; }
 .route-details { font-size: 13px; }
+.route-preview { margin: 12px 0; }
+.route-gauge-button { display: block; width: 100%; border: 0; padding: 0; color: #464c53; background: transparent; text-align: left; cursor: pointer; }
+.route-gauge { display: flex; height: 22px; overflow: hidden; border-radius: 12px; background: #e6e8ea; }
+.route-gauge-segment { display: flex; flex-basis: 0; align-items: center; justify-content: center; gap: 4px; min-width: 0; overflow: hidden; border-inline-start: 1px solid #ffffff66; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.route-gauge-segment:first-child { border: 0; }
+.route-mode-icon { display: inline-block; width: 16px; height: 16px; flex: 0 0 16px; vertical-align: middle; }
+.route-gauge-caption { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; margin-top: 6px; color: #6d747b; font-size: 11px; }
+.route-gauge-caption > span:last-child { color: #256ef4; }
+.route-transit-stops { display: grid; gap: 12px; margin: 12px 0; padding: 0; list-style: none; }
+.route-transit-stops > li { border-left: 2px solid var(--route-color); padding-left: 10px; }
+.route-vehicle { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; color: #464c53; font-size: 12px; }
+.route-vehicle > .route-mode-icon { color: var(--route-color); }
+.route-vehicle strong { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.route-vehicle small { margin-left: auto; color: #6d747b; font-size: 11px; }
+.route-stop-row { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 6px; margin-top: 4px; font-size: 12px; }
+.route-stop-row > span:first-child { color: #6d747b; }
+.route-stop-row > span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.route-walk-only { margin: 8px 0; color: #6d747b; font-size: 12px; }
 .route-details ol { display: grid; gap: 8px; margin: 10px 0; padding-left: 20px; }
 .route-details li span { display: block; }
 .route-details li span + span { color: #6d747b; font-size: 12px; }
@@ -493,8 +512,18 @@ summary { cursor: pointer; }
 .map-zoom-controls { display: grid; gap: 4px; }
 .map-zoom-controls button { width: 36px; padding: 2px; font-size: 20px; }
 .selected-apartment-marker { display: block; max-width: 200px; overflow: hidden; border-radius: 6px; padding: 5px 10px; background: #000; color: #fff; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
+.route-stop-marker { display: block; width: 10px; height: 10px; border: 3px solid; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #00000029; }
+.map-route-info { position: absolute; z-index: 4; top: 12px; left: 12px; width: max-content; max-width: min(360px, calc(100% - 24px)); border: 1px solid #cdd1d5; border-radius: 8px; padding: 10px 12px; background: #fff; color: #464c53; box-shadow: 0 2px 8px #0000001a; font-size: 12px; line-height: 1.5; }
+.map-route-info > strong { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; }
+.map-route-info p { margin: 4px 0; }
+.map-route-info small { display: block; margin-top: 4px; color: #6d747b; font-size: 11px; }
+.map-route-info button { border: 1px solid #cdd1d5; border-radius: 6px; padding: 4px 8px; background: #fff; color: #464c53; cursor: pointer; }
+.map-route-legend { display: flex; flex-wrap: wrap; gap: 8px; color: #6d747b; font-size: 11px; }
+.map-route-legend span::before { content: ''; display: inline-block; width: 14px; margin-right: 4px; border-top: 3px solid #65a30d; vertical-align: middle; }
+.map-route-legend .map-route-walk::before { border-top: 3px dashed #687789; }
 
 .search-message[role='alert'] { white-space: normal; }
 @media (max-width: 767px) {
+  .map-route-info { top: calc(var(--search-height, 74px) + 28px + env(safe-area-inset-top, 0px)); }
   .map-page:has(.map-panel[data-position='expanded']) .map-controls { display: none; }
 }

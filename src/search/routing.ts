@@ -134,9 +134,11 @@ export function createRouter(network: TransitNetwork) {
   const nodeStop = new Int32Array(nodes)
   const nodeLine = new Int32Array(nodes).fill(-1)
   const railStops = new Set<number>()
+  const lineOffsets: number[] = []
   let offset = n * 2
   stops.forEach((_, index) => { nodeStop[index] = index; nodeStop[n + index] = index })
   network.lines.forEach((line, lineIndex) => {
+    lineOffsets.push(offset)
     line.stops.forEach((id, index) => {
       const stopIndex = indices.get(id)!
       const arrival = offset + index * 2, departure = arrival + 1
@@ -227,7 +229,7 @@ export function createRouter(network: TransitNetwork) {
       // 도보만으로는 5분을 넘는 집도 여기서 승차할 수 있으므로 탑승 대안을 함께 보존한다.
       if (tails[index] <= maxMinutes * 60) {
         reachable.push({ ...stop, seconds: tails[index], boardings: 0,
-          legs: [{ mode: 'walk', from: stop.name, to: '목적지', seconds: tails[index] }] })
+          legs: [{ mode: 'walk', from: stop.name, to: '목적지', seconds: tails[index], fromStopId: stop.id }] })
       }
       if (seconds[index] > maxMinutes * 60) return
       const legs: RouteLeg[] = []
@@ -236,23 +238,29 @@ export function createRouter(network: TransitNetwork) {
         const edge = next[node], to = edges.to[edge], kind = edges.kind[edge]
         const fromName = stops[nodeStop[node]].name, toName = stops[nodeStop[to]].name
         let leg: RouteLeg | undefined
-        if (kind === WALK) leg = { mode: 'walk', from: fromName, to: toName, seconds: edges.seconds[edge] }
+        const endpoints = { fromStopId: stops[nodeStop[node]].id, toStopId: stops[nodeStop[to]].id }
+        if (kind === WALK) leg = { mode: 'walk', from: fromName, to: toName, seconds: edges.seconds[edge], ...endpoints }
         else if (kind !== ALIGHT) {
-          const line = network.lines[nodeLine[kind === WAIT ? to : node]]
+          const lineIndex = nodeLine[kind === WAIT ? to : node]
+          const line = network.lines[lineIndex]
           leg = { mode: kind === WAIT ? 'wait' : line.mode, from: fromName, to: toName,
-            seconds: edges.seconds[edge], line: line.name, lineId: line.id }
+            seconds: edges.seconds[edge], line: line.name, lineId: line.id, ...endpoints,
+            ...(kind === WAIT ? {} : { fromIndex: Math.floor((node - lineOffsets[lineIndex]) / 2),
+              toIndex: Math.floor((to - lineOffsets[lineIndex]) / 2) }) }
         }
         if (leg) {
           const previous = legs.at(-1)
           if (previous && ['bus', 'rail'].includes(leg.mode) && previous.lineId === leg.lineId && previous.mode === leg.mode) {
             previous.to = leg.to
             previous.seconds += leg.seconds
+            previous.toStopId = leg.toStopId
+            previous.toIndex = leg.toIndex
           } else legs.push(leg)
         }
         node = to
       }
       const lastStop = nodeStop[node]
-      legs.push({ mode: 'walk', from: stops[lastStop].name, to: '목적지', seconds: tails[lastStop] })
+      legs.push({ mode: 'walk', from: stops[lastStop].name, to: '목적지', seconds: tails[lastStop], fromStopId: stops[lastStop].id })
       reachable.push({ ...stop, seconds: seconds[index], boardings: boards[index], legs })
     })
     // 최단시간 탐색에서 밀려난 무환승 경로를 별도로 보존한다.
@@ -292,9 +300,11 @@ export function directStops(network: TransitNetwork, destination: Point, maxMinu
         const end = byId.get(line.stops[exit])!
         const tail = tails.get(end.id)!
         best.set(stop.id, { ...stop, seconds, boardings: 1, legs: [
-          { mode: 'wait', from: stop.name, to: stop.name, seconds: line.waitSeconds, line: line.name, lineId: line.id },
-          { mode: line.mode, from: stop.name, to: end.name, seconds: running - tail, line: line.name, lineId: line.id },
-          { mode: 'walk', from: end.name, to: '목적지', seconds: tail },
+          { mode: 'wait', from: stop.name, to: stop.name, seconds: line.waitSeconds, line: line.name, lineId: line.id,
+            fromStopId: stop.id, toStopId: stop.id },
+          { mode: line.mode, from: stop.name, to: end.name, seconds: running - tail, line: line.name, lineId: line.id,
+            fromStopId: stop.id, toStopId: end.id, fromIndex: i, toIndex: exit },
+          { mode: 'walk', from: end.name, to: '목적지', seconds: tail, fromStopId: end.id },
         ] })
       }
       const exitTime = line.dropoff?.[i] !== false ? tails.get(stop.id)! : Infinity
@@ -324,7 +334,7 @@ export function rankApartment(place: Place, destination: Place, stops: Reachable
     if (seconds > maxMinutes * 60 || !walkingFits(stop.legs, walk)) continue
     if (best && compareRoutes(best, { seconds, transfers }) <= 0) continue
     best = { ...place, seconds, transfers, startStop: stop.boardings ? stop.name : '도보 이동',
-      legs: [{ mode: 'walk', from: place.name, to: stop.name, seconds: walk }, ...stop.legs] }
+      legs: [{ mode: 'walk', from: place.name, to: stop.name, seconds: walk, toStopId: stop.id }, ...stop.legs] }
   }
   return best && best.seconds >= minMinutes * 60 ? best : null
 }

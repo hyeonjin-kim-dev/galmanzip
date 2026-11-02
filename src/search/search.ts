@@ -3,59 +3,18 @@ import { nextZoneIndex, partitionZone, searchZones, splitZone } from './zones'
 import type { SearchZone } from './zones'
 import type { Bounds } from './bounds'
 import { inServiceArea, queryPlaces, toPlace } from './places'
-import type { ApartmentResult, Place, Reachability, SearchSnapshot } from './types'
+import { routingTask } from './workerClient'
+import type { ApartmentResult, Place, ReachabilitySummary, SearchSnapshot } from './types'
 
-let cached: { key: string; expires: number; result: Reachability } | undefined
+let cached: { key: string; expires: number; result: ReachabilitySummary } | undefined
 let cacheTimer: number | undefined
-let routingWorker: Worker | undefined
-let workerExpires = 0
-let workerTimer: number | undefined
-
-type RoutingTask = { kind: 'reach' | 'rank'; destination: Place; minutes: number; places?: Place[]; minMinutes?: number }
-
-function routingTask<T>(task: RoutingTask, signal: AbortSignal): Promise<T> {
-  signal.throwIfAborted()
-  window.clearTimeout(workerTimer)
-  return new Promise((resolve, reject) => {
-    if (!routingWorker || workerExpires <= Date.now()) {
-      routingWorker?.terminate()
-      routingWorker = new Worker(new URL('./routing.worker.ts', import.meta.url), { type: 'module' })
-      workerExpires = Date.now() + 2 * 3600000
-    }
-    const worker = routingWorker
-    const release = () => {
-      worker.terminate()
-      if (routingWorker === worker) routingWorker = undefined
-    }
-    let done = false
-    const finish = (error?: Error, result?: T) => {
-      if (done) return
-      done = true
-      worker.onmessage = worker.onerror = null
-      window.clearTimeout(timer)
-      signal.removeEventListener('abort', abort)
-      if (error) { release(); reject(error) }
-      else {
-        workerTimer = window.setTimeout(release, 30000)
-        resolve(result!)
-      }
-    }
-    const abort = () => finish(new DOMException('검색을 취소했습니다.', 'AbortError'))
-    const timer = window.setTimeout(() => finish(new Error('교통 자료 처리 시간이 초과되었습니다. 다시 시도해 주세요.')), 90000)
-    signal.addEventListener('abort', abort, { once: true })
-    worker.onmessage = event => finish(event.data.error ? new Error(event.data.error) : undefined, event.data.result)
-    worker.onerror = () => finish(new Error('경로를 계산하지 못했습니다. 페이지를 새로고침해 주세요.'))
-    worker.postMessage({ ...task, url: new URL(`${import.meta.env.BASE_URL}data/transit.json`, location.href).href })
-  })
-}
-
-async function reachability(destination: Place, minutes: number, signal: AbortSignal): Promise<Reachability> {
+async function reachability(destination: Place, minutes: number, signal: AbortSignal): Promise<ReachabilitySummary> {
   signal.throwIfAborted()
   const key = `${destination.lat},${destination.lng},${minutes}`
   if (cached?.key === key && cached.expires > Date.now()) return cached.result
   cached = undefined
   window.clearTimeout(cacheTimer)
-  const result = await routingTask<Reachability>({ kind: 'reach', destination, minutes }, signal)
+  const result = await routingTask<ReachabilitySummary>({ kind: 'reach', destination, minutes }, signal)
   // 자체 계산 결과만 보관하며 장소 API 응답은 반복 검색에 재사용하지 않는다.
   cached = { key, result, expires: Date.now() + 2 * 3600000 }
   cacheTimer = window.setTimeout(() => { cached = undefined }, 2 * 3600000)
