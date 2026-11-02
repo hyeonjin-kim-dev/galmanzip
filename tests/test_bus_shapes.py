@@ -96,6 +96,11 @@ class ShapeTest(unittest.TestCase):
             with self.assertRaises(BUILD.ApiError):
                 BUILD.Client('PRIVATE_KEY', 10).get('getBusRouteLineListv2', '206000007')
             self.assertEqual(send.call_count, 1)
+        exhausted = io.BytesIO(b'<response><returnReasonCode>22</returnReasonCode></response>')
+        with patch.object(BUILD, 'urlopen', side_effect=HTTPError('https://example.org/?serviceKey=PRIVATE_KEY', 429, 'Too Many Requests', {}, exhausted)) as send:
+            with self.assertRaises(BUILD.ApiError):
+                BUILD.Client('PRIVATE_KEY', 10).get('getBusRouteLineListv2', '206000007')
+            self.assertEqual(send.call_count, 1)
 
     def write_network(self, root, lines):
         root.mkdir(exist_ok=True)
@@ -149,6 +154,28 @@ class ShapeTest(unittest.TestCase):
                 refreshed = BUILD.prepare(root, Path(folder) / '재확인', 'PRIVATE_KEY', '', 10)
             self.assertEqual(refreshed['requests'], 1)
             self.assertEqual(send.call_count, 1)
+
+    def test_incomplete_scan_resumes_across_days_without_repeating_checked_routes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / '자료'
+            self.write_network(root, [LINE])
+            def respond(request, **kwargs):
+                return io.BytesIO(xml_rows(POINTS, 'busRouteLineList', 'lineSeq') if 'getBusRouteLineListv2' in request.full_url
+                                  else xml_rows(STATIONS, 'busRouteStationList', 'stationSeq', 'stationId'))
+            with patch.object(BUILD, 'urlopen', side_effect=respond), patch.object(BUILD.time, 'sleep'), redirect_stdout(io.StringIO()):
+                BUILD.prepare(root, root / 'bus-shapes', 'PRIVATE_KEY', '206000007', 2)
+            lines = [LINE, {**LINE, 'id': 'BR_TAGO_GGB100000001:abcdef123456'}, {**LINE, 'id': 'BR_TAGO_GGB300000001:abcdef123456'}]
+            self.write_network(root, lines)
+            audit_path = root / 'bus-shapes' / 'audit.json'
+            audit = json.loads(audit_path.read_text())
+            audit_path.write_text(json.dumps({**audit, 'date': '2000-01-01', 'complete': False,
+                                             'attemptedRoutes': ['100000001']}))
+            with patch.object(BUILD, 'urlopen', return_value=io.BytesIO(b'<response><resultCode>4</resultCode></response>')) as send, redirect_stdout(io.StringIO()):
+                resumed = BUILD.prepare(root, Path(folder) / '재개', 'PRIVATE_KEY', '', 2)
+            self.assertEqual(resumed['requests'], 1)
+            self.assertEqual(send.call_count, 1)
+            self.assertEqual(resumed['attemptedRoutes'], ['100000001', '300000001'])
+            self.assertTrue(resumed['complete'])
 
     def test_parallel_fetches_share_one_request_budget_and_start_interval(self):
         clock, starts, scheduled, guard = [100.0], [], [], threading.Lock()

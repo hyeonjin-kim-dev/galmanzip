@@ -220,7 +220,7 @@ class Client:
             finally:
                 error.close()
             raise ApiError(f'버스 노선 API 응답 오류: HTTP {error.code}, 제공기관 코드 {code}.',
-                           retryable=error.code == 429 or 500 <= error.code <= 599) from None
+                           retryable=code != '22' and (error.code == 429 or 500 <= error.code <= 599)) from None
         except (URLError, TimeoutError, OSError) as error:
             reason = error.reason if isinstance(error, URLError) else error
             kind = '인증서·TLS' if isinstance(reason, ssl.SSLError) else 'DNS' if isinstance(reason, socket.gaierror) else '시간 초과' if isinstance(reason, TimeoutError) else '연결'
@@ -261,8 +261,9 @@ def prepare(network_dir, output, key, route_id='', max_requests=200):
     attempted, stop_error = set(), None
     if (existing / 'audit.json').exists():
         previous = json.loads((existing / 'audit.json').read_text())
-        # 같은 원본·같은 날짜의 실패한 대조만 재사용한다. 노선 변경 이후까지 제외하지 않는다.
-        if previous.get('networkAsset') == manifest['asset'] and previous.get('date') == date:
+        # 한도 때문에 날짜를 넘겨 재개할 때도 앞서 검사한 노선을 반복하지 않는다.
+        # 전체 대조가 끝난 뒤 다른 날짜에 다시 시작하면 미확보 노선을 재확인한다.
+        if previous.get('networkAsset') == manifest['asset'] and (previous.get('date') == date or previous.get('complete') is False):
             attempted = {value for value in previous.get('attemptedRoutes', []) if isinstance(value, str) and value in groups}
             if not route_id:
                 reasons.update(previous.get('rejected', {}))
