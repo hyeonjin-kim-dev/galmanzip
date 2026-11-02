@@ -1,5 +1,4 @@
 {
-  "requestId": "road-shapes-bulk-1",
-  "routeId": "",
-  "maxRequests": 2000
+  "requestId": "road-files-1",
+  "source": "gbis-files"
 }

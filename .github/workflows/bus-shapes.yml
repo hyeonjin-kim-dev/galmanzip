@@ -5,13 +5,6 @@ on:
     branches: [main]
     paths: [config/bus-shapes-request.json]
   workflow_dispatch:
-    inputs:
-      route_id:
-        description: 노선 ID (빈 값이면 아직 준비되지 않은 전체 노선)
-        default: '206000007'
-      max_requests:
-        description: 이번 실행의 최대 API 요청 수
-        default: '200'
 
 permissions:
   contents: read
@@ -34,23 +27,19 @@ jobs:
           node-version: '24'
       - name: 좌표 처리 검사
         run: python3 -m unittest discover -s tests -p 'test_*.py'
-      - name: 공공데이터 좌표 수집과 대조
+      - name: GBIS 전체 파일 다운로드
         env:
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
-          BUS_SHAPE_ROUTE_ID: ${{ inputs.route_id }}
-          BUS_SHAPE_MAX_REQUESTS: ${{ inputs.max_requests || '200' }}
-          PREPARATION_TRIGGER: ${{ github.event_name }}
-        run: |
-          if [ "$PREPARATION_TRIGGER" = "push" ]; then
-            python3 scripts/prepare-bus-shapes.py --request config/bus-shapes-request.json --output /tmp/galmanzip-bus-shapes
-          else
-            python3 scripts/prepare-bus-shapes.py --output /tmp/galmanzip-bus-shapes
-          fi
-      - name: 배포 전 좌표 검증
-        run: node --experimental-strip-types scripts/validate-bus-shapes.ts /tmp/galmanzip-bus-shapes
-      - name: 검증한 좌표와 보고서 보관
+        run: python3 scripts/bus_files.py --download /tmp/galmanzip-bus-files
+      - name: 전체 원본 파일과 해시 보관
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: bus-road-shapes
-          path: /tmp/galmanzip-bus-shapes
+          name: bus-base-files
+          path: /tmp/galmanzip-bus-files
+          retention-days: 7
+      - name: 파일 형식 확인용 일부 행 보관
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: bus-base-samples
+          path: /tmp/galmanzip-bus-files/samples
           retention-days: 7
