@@ -51,7 +51,7 @@ with sync_playwright() as p:
             ids: [...document.querySelectorAll('.apartment-card')].map(card => card.dataset.placeId) };
         }''')
         expect(app.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=30000)
-        expect(app.locator('.results-summary h2')).to_have_text('지도 안 아파트 60곳')
+        expect(app.locator('.results-summary h2')).to_have_text('찾은 아파트 60곳')
         expect(app.locator('.test-cluster')).to_have_text('60')
         assert evaluate(app, '() => window.__searchTest.map.getCenter().getLng()') == 127.16
         assert evaluate(app, '() => window.__searchTest.fitCount || 0') == 0

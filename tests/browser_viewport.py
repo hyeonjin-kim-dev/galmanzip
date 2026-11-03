@@ -1,4 +1,4 @@
-"""주변 결과 우선 표시, 지도 영역 필터와 읽던 목록의 안정성을 검증한다."""
+"""주변 결과 우선 표시, 지도 영역의 마커와 누적 목록의 안정성을 검증한다."""
 import json
 import time
 from playwright.sync_api import sync_playwright, expect
@@ -72,7 +72,11 @@ with sync_playwright() as p:
         assert page.locator('.apartment-card').evaluate_all('(cards) => cards.map(card => card.dataset.placeId)') == ['far', 'near']
         for _ in range(4):
             page.get_by_role('button', name='지도 확대', exact=True).click()
-        expect(page.locator('[data-place-id="far"]')).to_have_count(0)
+        expect(page.locator('[data-place-id="far"]')).to_have_count(1)
+        expect(page.locator('.results-summary h2')).to_have_text('찾은 아파트 2곳')
+        expect(page.locator('.results-map-count')).to_have_text('현재 지도 안 1곳')
+        assert page.locator('.apartment-card').evaluate_all('(cards) => cards.map(card => card.dataset.placeId)') == ['far', 'near']
+        expect(page.locator('[data-place-id="near"] .route-details')).to_have_attribute('open', '')
         expect(page.locator('.test-cluster')).to_have_text('1')
         page.get_by_role('button', name='찾은 집 모두 보기', exact=True).click()
         expect(page.locator('.apartment-card')).to_have_count(2)
@@ -80,7 +84,7 @@ with sync_playwright() as p:
         assert page.evaluate('localStorage.length + sessionStorage.length') == 0
         page.screenshot(path=f'/tmp/galmanzip-viewport-{"mobile" if mobile else "desktop"}.png')
         context.close()
-        print(f'{"모바일" if mobile else "PC"}: 첫 주변 결과 {first / 1000:.1f}초, 전체 {total / 1000:.1f}초 · 확대/축소 필터·자동 이동 방지·선택 유지 검증 통과', flush=True)
+        print(f'{"모바일" if mobile else "PC"}: 첫 주변 결과 {first / 1000:.1f}초, 전체 {total / 1000:.1f}초 · 확대/축소 시 목록 유지·지도 마커 필터·선택 유지 검증 통과', flush=True)
 
     context, page, errors = prepare(browser)
     choose(page)
@@ -135,8 +139,8 @@ with sync_playwright() as p:
     if not any(includes_new(call) for call in calls[:previous]):
         next_new = next(i for i in range(previous, len(calls)) if includes_new(calls[i]))
         assert next_new - previous <= 1, (previous, next_new, calls)
-    expect(page.locator('[data-place-id="near"]')).to_have_count(0)
+    expect(page.locator('[data-place-id="near"]')).to_have_count(1)
     assert not errors, errors
     context.close()
-    print('검색 중 지도 이동 시 새 화면의 요청 우선 처리와 지도 밖 목록 제거 검증 통과', flush=True)
+    print('검색 중 지도 이동 시 새 화면의 요청 우선 처리와 기존 목록 유지 검증 통과', flush=True)
     browser.close()

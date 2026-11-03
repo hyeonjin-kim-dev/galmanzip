@@ -11,12 +11,12 @@ type Action = { type: 'snapshot'; snapshot: SearchSnapshot } | { type: 'bounds';
   | { type: 'begin'; bounds: Bounds } | { type: 'reset' } | { type: 'sort' } | { type: 'cancel' }
 
 function appendVisible(previous: ApartmentResult[], all: ApartmentResult[], bounds: Bounds | null) {
+  // 한 번 목록에 표시한 집은 지도 밖으로 나가도 유지한다. 검색 초기화 때만 목록을 비운다.
   const available = new Map(all.filter(result => bounds && contains(bounds, result)).map(result => [result.id, result]))
-  const kept = previous.filter(result => available.has(result.id))
-  const ids = new Set(kept.map(result => result.id))
+  const ids = new Set(previous.map(result => result.id))
   const added = [...available.values()].filter(result => !ids.has(result.id))
-  if (kept.length === previous.length && !added.length) return previous
-  return [...kept, ...sortApartments(added)].sort(compareResultGroups)
+  if (!added.length) return previous
+  return [...previous, ...sortApartments(added)].sort(compareResultGroups)
 }
 
 export function viewReducer(view: SearchView, action: Action): SearchView {

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import KakaoMap from './components/KakaoMap'
 import MapPanel from './components/MapPanel'
 import DestinationSearch from './components/DestinationSearch'
 import ApartmentResults from './components/ApartmentResults'
 import { searchApartments } from './search/search'
-import { around, sameBounds } from './search/bounds'
+import { around, contains, sameBounds } from './search/bounds'
 import type { Bounds } from './search/bounds'
 import { initialView, isViewLoading, viewReducer } from './search/view'
 import type { Place } from './search/types'
@@ -14,6 +14,7 @@ export default function App() {
   const [sheetHeight, setSheetHeight] = useState('42%')
   const [view, dispatch] = useReducer(viewReducer, initialView)
   const snapshot = view.snapshot
+  const mapResults = useMemo(() => view.results.filter(result => view.bounds && contains(view.bounds, result)), [view.results, view.bounds])
   const viewportRef = useRef<Bounds | null>(null)
   const onViewport = useCallback((bounds: Bounds) => {
     if (sameBounds(viewportRef.current, bounds)) return
@@ -74,11 +75,11 @@ export default function App() {
       <h1 className="visually-hidden">갈만한 거리의 집</h1>
       <MapPanel onHeightChange={setSheetHeight} searchVersion={searchVersion} selection={selection}
         search={<DestinationSearch busy={snapshot.status === 'loading'} onSearch={search} onReset={reset} onCancel={cancel} />}>
-        <ApartmentResults key={searchVersion} snapshot={snapshot} results={view.results} viewLoading={isViewLoading(view)}
+        <ApartmentResults key={searchVersion} snapshot={snapshot} results={view.results} mapCount={mapResults.length} viewLoading={isViewLoading(view)}
           onSort={() => dispatch({ type: 'sort' })} destination={destination} selectedId={selectedId} onSelect={select} />
       </MapPanel>
       <section className="map-viewport" aria-label="지도 영역">
-        <KakaoMap results={view.results} allResults={snapshot.results} searchVersion={searchVersion} maxMinutes={searchMinutes} onViewport={onViewport} destination={destination} selection={selection}
+        <KakaoMap results={mapResults} allResults={snapshot.results} searchVersion={searchVersion} maxMinutes={searchMinutes} onViewport={onViewport} destination={destination} selection={selection}
           onSelect={select} />
       </section>
     </main>

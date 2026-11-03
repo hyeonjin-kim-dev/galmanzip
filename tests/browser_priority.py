@@ -57,9 +57,26 @@ with sync_playwright() as p:
         ids = app.locator('.apartment-card').evaluate_all('(cards) => cards.map(card => card.dataset.placeId)')
         assert ids[0] == 'late-direct' and ids[1:] == reading['ids']
         assert_reader(app, reading)
+        calls = evaluate(app, '() => window.__searchTest.calls.length')
+        # 휠·핀치처럼 목록 포커스를 옮기지 않는 지도 조작에서도 읽던 위치를 유지한다.
+        for level in (4, 9, 5):
+            evaluate(app, f'''() => {{
+              const map = window.__searchTest.map;
+              map.setCenter(new window.kakao.maps.LatLng(38, 128));
+              map.setLevel({level});
+            }}''')
+            expect(app.locator('.results-map-count')).to_have_text('현재 지도 안 0곳')
+            expect(app.locator('.apartment-card')).to_have_count(21)
+            expect(app.locator('.test-cluster')).to_have_count(0)
+            assert_reader(app, reading)
+        focus_both(app)
+        expect(app.locator('.test-cluster')).to_have_text('21')
+        assert app.locator('.apartment-card').evaluate_all('(cards) => cards.map(card => card.dataset.placeId)') == ids
+        assert_reader(app, reading)
+        assert evaluate(app, '() => window.__searchTest.calls.length') == calls
         assert not errors, errors
         context.close()
-        print(mode, '늦은 환승 0회 자동 우선 표시·기존 환승 목록 순서·상세·포커스·보던 위치 유지 검증 통과', flush=True)
+        print(mode, '무환승 우선·지도 확대/축소/이동 후 목록·상세·포커스·보던 위치 유지·추가 조회 없음 검증 통과', flush=True)
 
     context, page, errors = prepare(browser)
     choose(page)

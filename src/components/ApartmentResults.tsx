@@ -7,6 +7,7 @@ import RoutePreview from './RoutePreview'
 interface ApartmentResultsProps {
   snapshot: SearchSnapshot
   results: ApartmentResult[]
+  mapCount: number
   viewLoading: boolean
   onSort(): void
   destination: Place | null
@@ -62,7 +63,7 @@ const ApartmentCard = memo(function ApartmentCard({ apartment, destination, sele
   )
 })
 
-export default function ApartmentResults({ snapshot, results, viewLoading, onSort, destination, selectedId, onSelect }: ApartmentResultsProps) {
+export default function ApartmentResults({ snapshot, results, mapCount, viewLoading, onSort, destination, selectedId, onSelect }: ApartmentResultsProps) {
   const [visibleCount, setVisibleCount] = useState<Record<ResultGroup, number>>({ rail: 50, express: 50, bus: 50, walk: 50, transfer: 50 })
   const listRef = useRef<HTMLDivElement>(null)
   const groups = useMemo(() => resultGroups.map(group => ({ ...group,
@@ -86,8 +87,9 @@ export default function ApartmentResults({ snapshot, results, viewLoading, onSor
   return (
     <section className="apartment-results" aria-label="아파트 검색 결과" aria-busy={viewLoading && !results.length}>
       <div className="results-summary">
-        <h2>지도 안 아파트 {results.length.toLocaleString('ko-KR')}곳</h2>
+        <h2>찾은 아파트 {results.length.toLocaleString('ko-KR')}곳</h2>
         <p>각 도보 구간이 5분 이하 · 직통 경로 우선</p>
+        <p className="results-map-count">현재 지도 안 {mapCount.toLocaleString('ko-KR')}곳</p>
         {snapshot.maxTransfers !== undefined && <p>최대 환승 {snapshot.maxTransfers}회</p>}
         <p className="search-message" role={snapshot.status === 'error' ? 'alert' : 'status'} title={message}>{message}</p>
         <div className="results-actions">

@@ -179,7 +179,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='검색', exact=True).click()
     expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=30000)
     show_all(page)
-    expect(page.locator('.results-summary h2')).to_have_text('지도 안 아파트 72곳')
+    expect(page.locator('.results-summary h2')).to_have_text('찾은 아파트 72곳')
     expect(page.locator('.test-cluster')).to_have_text('72')
     expect(page.locator('.apartment-card')).to_have_count(50)
     page.get_by_role('button', name='환승 0회 · 지하철 더 보기', exact=True).click()

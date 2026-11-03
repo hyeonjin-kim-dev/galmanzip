@@ -30,14 +30,24 @@ test('지도 밖 결과와 진행률 변경은 현재 목록을 재생성하지 
   assert.equal(view.results.length, 1)
 })
 
-test('지도를 넓힐 때 기존 항목은 유지하고 새로 보이는 집만 뒤에 추가한다', () => {
+test('지도 확대·축소·이동으로 보이지 않게 된 집도 목록과 기존 순서에 남긴다', () => {
   const a = apartment('지도 안', 1000), b = apartment('새로 보이는 집', 600, 127.2)
   let view = viewReducer(initialView, { type: 'begin', bounds })
   view = viewReducer(view, { type: 'snapshot', snapshot: snapshot([b, a]) })
   view = viewReducer(view, { type: 'bounds', bounds: { ...bounds, east: 127.21 } })
   assert.deepEqual(view.results, [a, b])
+  const previous = view.results
   view = viewReducer(view, { type: 'bounds', bounds: { ...bounds, west: 127.19, east: 127.21 } })
-  assert.deepEqual(view.results, [b])
+  assert.equal(view.results, previous)
+  view = viewReducer(view, { type: 'bounds', bounds: { ...bounds, west: 128, east: 129 } })
+  assert.equal(view.results, previous)
+  view = viewReducer(view, { type: 'snapshot', snapshot: snapshot([b, a], 'complete') })
+  assert.equal(view.results, previous)
+  for (let repeat = 0; repeat < 3; repeat++) {
+    view = viewReducer(view, { type: 'bounds', bounds })
+    view = viewReducer(view, { type: 'bounds', bounds: { ...bounds, east: 127.21 } })
+    assert.equal(view.results, previous)
+  }
 })
 
 test('소요시간 재정렬은 사용자 요청 시 적용하며 이후 결과는 기존 순서 뒤에 추가한다', () => {
