@@ -1,6 +1,7 @@
 import { contains, intersects, sameBounds } from './bounds.ts'
 import type { Bounds } from './bounds.ts'
 import { sortApartments } from './routing.ts'
+import { compareResultGroups } from './resultOrder.ts'
 import type { ApartmentResult, SearchSnapshot } from './types.ts'
 
 export const emptySearch: SearchSnapshot = { status: 'idle', results: [], message: '', completed: 0, total: 0, limited: false }
@@ -15,7 +16,7 @@ function appendVisible(previous: ApartmentResult[], all: ApartmentResult[], boun
   const ids = new Set(kept.map(result => result.id))
   const added = [...available.values()].filter(result => !ids.has(result.id))
   if (kept.length === previous.length && !added.length) return previous
-  return [...kept, ...sortApartments(added)]
+  return [...kept, ...sortApartments(added)].sort(compareResultGroups)
 }
 
 export function viewReducer(view: SearchView, action: Action): SearchView {

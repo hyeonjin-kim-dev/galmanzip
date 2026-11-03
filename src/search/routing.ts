@@ -1,5 +1,6 @@
 import type { ApartmentResult, Place, Point, Reachability, ReachableStop, RouteLeg, TransitNetwork } from './types.ts'
 import { Edges } from './edges.ts'
+import { compareResultGroups } from './resultOrder.ts'
 
 export const MAX_WALK_SECONDS = 300
 export const ACCESS_RADIUS = MAX_WALK_SECONDS * 1.2 / 1.3
@@ -219,21 +220,28 @@ export function createRouter(network: TransitNetwork) {
       }
     }
   })
-  const seconds = new Float64Array(nodes)
-  const boards = new Int32Array(nodes)
-  const next = new Int32Array(nodes)
+  const layers: { seconds: Float64Array; next: Int32Array }[] = []
   const tails = new Float64Array(n)
-  let last: { destination: Point; minutes: number; nearby: ReturnType<typeof indexStops> } | undefined
-  const route = (destination: Point, maxMinutes: number): Reachability => {
+  let last: { destination: Point; minutes: number; maxTransfers: number; nearby: ReturnType<typeof indexStops> } | undefined
+  const route = (destination: Point, maxMinutes: number, maxTransfers = 3): Reachability => {
     if (!Number.isFinite(maxMinutes) || maxMinutes <= 0 || maxMinutes > 180) throw new Error('소요시간을 확인해 주세요.')
+    if (!Number.isInteger(maxTransfers) || maxTransfers < 0 || maxTransfers > 3) throw new Error('최대 환승 횟수는 0~3회로 선택해 주세요.')
     if (!Number.isFinite(destination.lat) || !Number.isFinite(destination.lng) || Math.abs(destination.lat) > 90 || Math.abs(destination.lng) > 180) {
       throw new Error('목적지 좌표를 확인해 주세요.')
     }
     // 최단시간 탐색에서 밀려나지 않도록 무환승을 먼저 확인한다.
     const direct = directStops(network, destination, maxMinutes)
-    seconds.fill(Infinity)
-    boards.fill(0x7fffffff)
-    next.fill(-1)
+    const maxBoardings = maxTransfers + 1
+    // 승차 횟수별 비용을 보존해, 빠른 다환승 경로가 허용 범위의 대안을 지우지 않게 한다.
+    for (let count = 0; count <= maxBoardings; count++) {
+      const layer = layers[count] ??= { seconds: new Float64Array(offset), next: new Int32Array(offset) }
+      layer.seconds.fill(Infinity)
+      layer.next.fill(-1)
+    }
+    const dominated = (node: number, seconds: number, boardings: number) => {
+      for (let count = 0; count < boardings; count++) if (layers[count].seconds[node] <= seconds) return true
+      return false
+    }
     tails.fill(Infinity)
     const queue = new Queue()
     stops.forEach((stop, index) => {
@@ -241,23 +249,24 @@ export function createRouter(network: TransitNetwork) {
       if (metres > DESTINATION_RADIUS) return
       const time = walkingSeconds(metres)
       if (time > MAX_WALK_SECONDS) return
-      seconds[n + index] = time
-      boards[n + index] = 0
+      layers[0].seconds[n + index] = time
       tails[index] = time
       queue.push({ node: n + index, seconds: time, boardings: 0 })
     })
     let current: QueueItem | undefined
     while ((current = queue.pop())) {
-      if (current.seconds !== seconds[current.node] || current.boardings !== boards[current.node]) continue
+      if (current.seconds !== layers[current.boardings].seconds[current.node]
+        || dominated(current.node, current.seconds, current.boardings)) continue
       if (current.seconds > maxMinutes * 60) continue
       for (let edge = edges.heads[current.node]; edge >= 0; edge = edges.next[edge]) {
         const from = edges.from[edge]
         const time = current.seconds + edges.seconds[edge], boardings = current.boardings + (edges.kind[edge] === BOARD || edges.kind[edge] === TRANSFER ? 1 : 0)
-        if (time > maxMinutes * 60 || time > seconds[from] || (time === seconds[from] && boardings >= boards[from])) continue
-        seconds[from] = time
-        boards[from] = boardings
-        next[from] = edge
-        queue.push({ node: from, seconds: time, boardings })
+        if (boardings > maxBoardings || time > maxMinutes * 60 || time >= layers[boardings].seconds[from]
+          || dominated(from, time, boardings)) continue
+        layers[boardings].seconds[from] = time
+        layers[boardings].next[from] = edge
+        // 출발 정류장의 마지막 승차 비용까지만 필요하다. 더 거슬러 가려면 상한을 넘겨 다시 승차해야 한다.
+        if (boardings < maxBoardings) queue.push({ node: from, seconds: time, boardings })
       }
     }
     const reachable: ReachableStop[] = []
@@ -267,11 +276,16 @@ export function createRouter(network: TransitNetwork) {
         reachable.push({ ...stop, seconds: tails[index], boardings: 0,
           legs: [{ mode: 'walk', from: stop.name, to: '목적지', seconds: tails[index], fromStopId: stop.id }] })
       }
-      if (seconds[index] > maxMinutes * 60) return
+      let boardings = 1
+      for (let count = 2; count <= maxBoardings; count++) {
+        if (layers[count].seconds[index] < layers[boardings].seconds[index]) boardings = count
+      }
+      const seconds = layers[boardings].seconds[index]
+      if (seconds > maxMinutes * 60) return
       const legs: RouteLeg[] = []
-      let node = index
-      while (next[node] >= 0) {
-        const edge = next[node], to = edges.to[edge], kind = edges.kind[edge]
+      let node = index, remainingBoardings = boardings
+      while (layers[remainingBoardings].next[node] >= 0) {
+        const edge = layers[remainingBoardings].next[node], to = edges.to[edge], kind = edges.kind[edge]
         const fromName = stops[nodeStop[node]].name, toName = stops[nodeStop[to]].name
         let leg: RouteLeg | undefined
         const endpoints = { fromStopId: stops[nodeStop[node]].id, toStopId: stops[nodeStop[to]].id }
@@ -293,11 +307,12 @@ export function createRouter(network: TransitNetwork) {
             previous.toIndex = leg.toIndex
           } else legs.push(leg)
         }
+        if (kind === BOARD || kind === TRANSFER) remainingBoardings--
         node = to
       }
       const lastStop = nodeStop[node]
       legs.push({ mode: 'walk', from: stops[lastStop].name, to: '목적지', seconds: tails[lastStop], fromStopId: stops[lastStop].id })
-      reachable.push({ ...stop, seconds: seconds[index], boardings: boards[index], legs })
+      reachable.push({ ...stop, seconds, boardings, legs })
     })
     // 최단시간 탐색에서 밀려난 무환승 경로를 별도로 보존한다.
     const fastest = new Map(reachable.map(stop => [stop.id, stop]))
@@ -306,17 +321,17 @@ export function createRouter(network: TransitNetwork) {
       if (!other || other.boardings > 1 || route.seconds < other.seconds) reachable.push(route)
     }
     const result = { stops: reachable.sort((a, b) => a.seconds - b.seconds || a.boardings - b.boardings), source: network.source, coverage: network.coverage }
-    last = { destination, minutes: maxMinutes, nearby: indexStops(result.stops) }
+    last = { destination, minutes: maxMinutes, maxTransfers, nearby: indexStops(result.stops) }
     return result
   }
   return Object.assign(route, { rank: (place: Place, destination: Place, minMinutes = 0) => {
     if (!last || last.destination.lat !== destination.lat || last.destination.lng !== destination.lng) throw new Error('검색 조건을 다시 확인해 주세요.')
-    return rankApartment(place, destination, last.nearby(place), last.minutes, minMinutes)
+    return rankApartment(place, destination, last.nearby(place), last.minutes, minMinutes, last.maxTransfers)
   } })
 }
 
-export function findReachableStops(network: TransitNetwork, destination: Point, maxMinutes: number): Reachability {
-  return createRouter(network)(destination, maxMinutes)
+export function findReachableStops(network: TransitNetwork, destination: Point, maxMinutes: number, maxTransfers = 3): Reachability {
+  return createRouter(network)(destination, maxMinutes, maxTransfers)
 }
 
 export function directStops(network: TransitNetwork, destination: Point, maxMinutes: number): ReachableStop[] {
@@ -354,7 +369,7 @@ export function compareRoutes(a: { seconds: number; transfers: number }, b: { se
   return Number(a.transfers > 0) - Number(b.transfers > 0) || a.seconds - b.seconds || a.transfers - b.transfers
 }
 
-export function rankApartment(place: Place, destination: Place, stops: ReachableStop[], maxMinutes: number, minMinutes = 0): ApartmentResult | null {
+export function rankApartment(place: Place, destination: Place, stops: ReachableStop[], maxMinutes: number, minMinutes = 0, maxTransfers = 3): ApartmentResult | null {
   let best: ApartmentResult | null = null
   const direct = distance(place, destination)
   if (direct <= DESTINATION_RADIUS && walkingSeconds(direct) <= Math.min(maxMinutes * 60, MAX_WALK_SECONDS)) {
@@ -365,7 +380,7 @@ export function rankApartment(place: Place, destination: Place, stops: Reachable
     const metres = distance(place, stop)
     if (metres > ACCESS_RADIUS) continue
     const walk = walkingSeconds(metres), seconds = walk + stop.seconds, transfers = Math.max(0, stop.boardings - 1)
-    if (seconds > maxMinutes * 60 || !walkingFits(stop.legs, walk)) continue
+    if (transfers > maxTransfers || seconds > maxMinutes * 60 || !walkingFits(stop.legs, walk)) continue
     if (best && compareRoutes(best, { seconds, transfers }) <= 0) continue
     best = { ...place, seconds, transfers, startStop: stop.boardings ? stop.name : '도보 이동',
       legs: [{ mode: 'walk', from: place.name, to: stop.name, seconds: walk, toStopId: stop.id }, ...stop.legs] }
@@ -374,4 +389,4 @@ export function rankApartment(place: Place, destination: Place, stops: Reachable
 }
 
 export const sortApartments = (results: ApartmentResult[]) => results.sort((a, b) =>
-  compareRoutes(a, b) || a.name.localeCompare(b.name, 'ko') || a.id.localeCompare(b.id))
+  compareResultGroups(a, b) || compareRoutes(a, b) || a.name.localeCompare(b.name, 'ko') || a.id.localeCompare(b.id))

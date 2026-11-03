@@ -277,7 +277,7 @@ summary { cursor: pointer; }
 .results-more { display: block; width: calc(100% - 32px); margin: 16px; border: 1px solid #cdd1d5; border-radius: 6px; padding: 10px; color: #464c53; background: #fff; cursor: pointer; }
 .destination-marker { display: block; border-radius: 6px; padding: 5px 10px; color: #fff; background: #256ef4; font-size: 13px; font-weight: 600; white-space: nowrap; box-shadow: 0 1px 4px #00000029; }
 
-.travel-time-field {
+.search-select-field {
   position: relative;
   width: max-content;
   max-width: 100%;

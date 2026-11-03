@@ -27,7 +27,7 @@ async function waitForResponse(pending: Iterable<Promise<CompletedArea>>, delay:
 }
 
 export async function searchApartments(destination: Place, minMinutes: number, maxMinutes: number, parentSignal: AbortSignal,
-  update: (snapshot: SearchSnapshot) => void, getViewport: () => Bounds | null = () => null) {
+  update: (snapshot: SearchSnapshot) => void, getViewport: () => Bounds | null = () => null, maxTransfers = 3) {
   if (!Number.isFinite(minMinutes) || minMinutes < 0 || minMinutes > maxMinutes) throw new Error('소요 시간을 확인해 주세요.')
   parentSignal.throwIfAborted()
   const controller = new AbortController()
@@ -45,11 +45,11 @@ export async function searchApartments(destination: Place, minMinutes: number, m
   let results: ApartmentResult[] = []
   let progress: SearchProgress = { completed: 0, total: 0, limited: false, pendingAreas: [] }
   let plan: SearchPlan | undefined
-  const emit = (status: SearchSnapshot['status'], message: string) => update({ ...progress, status, message, results,
+  const emit = (status: SearchSnapshot['status'], message: string) => update({ ...progress, status, message, results, maxTransfers,
     notice: '각 도보 구간이 5분 이하인 경로에서 환승 없는 경로를 우선합니다. 교통 자료로 추정한 결과이며 실제 운행은 외부 길찾기에서 확인해 주세요.',
     source: plan?.source, coverage: plan?.coverage })
   try {
-    plan = await routingTask<SearchPlan>({ kind: 'plan', session, destination, minutes: maxMinutes, bounds: initialBounds }, signal)
+    plan = await routingTask<SearchPlan>({ kind: 'plan', session, destination, minutes: maxMinutes, bounds: initialBounds, maxTransfers }, signal)
     signal.throwIfAborted()
     progress = plan
     emit('loading', '집을 계속 찾고 있어요.')

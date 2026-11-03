@@ -3,10 +3,13 @@ import type { KeyboardEvent } from 'react'
 import { inServiceArea, queryPlaces, toPlace } from '../search/places'
 import type { Place } from '../search/types'
 import TravelTimeSelect from './TravelTimeSelect'
+import SearchSelect from './SearchSelect'
+
+const transferOptions = Array.from({ length: 4 }, (_, value) => ({ value, label: value ? `환승 ${value}회 이하` : '환승 0회' }))
 
 interface DestinationSearchProps {
   busy: boolean
-  onSearch(destination: Place, minMinutes: number, maxMinutes: number): void
+  onSearch(destination: Place, minMinutes: number, maxMinutes: number, maxTransfers: number): void
   onReset(): void
   onCancel(): void
 }
@@ -15,6 +18,7 @@ export default function DestinationSearch({ busy, onSearch, onReset, onCancel }:
   const [query, setQuery] = useState('')
   const [destination, setDestination] = useState<Place | null>(null)
   const [minutes, setMinutes] = useState<number | null>(null)
+  const [maxTransfers, setMaxTransfers] = useState(3)
   const [places, setPlaces] = useState<Place[]>([])
   const [message, setMessage] = useState('')
   const [open, setOpen] = useState(false)
@@ -61,7 +65,7 @@ export default function DestinationSearch({ busy, onSearch, onReset, onCancel }:
   }
 
   const submit = () => {
-    if (destination && minutes !== null && !busy) onSearch(destination, minutes - 10, minutes)
+    if (destination && minutes !== null && !busy) onSearch(destination, minutes - 10, minutes, maxTransfers)
   }
 
   const handleKey = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -120,6 +124,8 @@ export default function DestinationSearch({ busy, onSearch, onReset, onCancel }:
       </div>
       <div className="search-options">
         <TravelTimeSelect label="소요 시간" value={minutes} onChange={value => { setMinutes(value); onReset() }} />
+        <SearchSelect label="최대 환승 횟수" value={maxTransfers} options={transferOptions} className="transfer-count-field"
+          onChange={value => { setMaxTransfers(value); onReset() }} />
         {busy
           ? <button className="search-button" type="button" onClick={event => { event.preventDefault(); onCancel() }}>중단</button>
           : <button className="search-button" type="button" disabled={!destination || minutes === null} onClick={submit}>검색</button>}

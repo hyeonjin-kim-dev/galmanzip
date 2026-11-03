@@ -28,8 +28,8 @@ self.onmessage = async (event: MessageEvent<Request>) => {
     }
     if (task.kind === 'plan') {
       route ??= createRouter(network)
-      const key = `${task.destination.lat},${task.destination.lng},${task.minutes}`
-      if (current?.key !== key) current = { key, result: route(task.destination, task.minutes) }
+      const key = `${task.destination.lat},${task.destination.lng},${task.minutes},${task.maxTransfers}`
+      if (current?.key !== key) current = { key, result: route(task.destination, task.minutes, task.maxTransfers) }
       if (!current.result.stops.length) throw new Error('목적지 주변에서 자료에 포함된 정류장을 찾지 못했습니다.')
       const planner = createSearchPlanner(current.result, task.destination, task.minutes, task.bounds)
       search = { id: task.session, destination: task.destination, planner, seen: new Set() }

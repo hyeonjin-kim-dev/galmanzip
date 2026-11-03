@@ -34,7 +34,7 @@ with sync_playwright() as p:
         assert page.evaluate('window.__searchTest.createdMarkers') == 3
         priorities = page.locator('.apartment-card .apartment-time').evaluate_all('(times) => times.map(time => time.textContent.includes("환승 0회"))')
         assert priorities == sorted(priorities, reverse=True)
-        page.get_by_role('button', name='무환승·시간순 정렬', exact=True).click()
+        page.get_by_role('button', name='수단·시간순 정렬', exact=True).click()
         assert page.locator('.apartment-card').evaluate_all('(cards) => cards.map(card => card.dataset.placeId)') == ['fast', 'slow', 'transfer']
         expect(page.locator('.test-cluster')).to_have_text('3')
         assert page.evaluate('window.__searchTest.clusterOptions.minClusterSize') == 1
@@ -182,7 +182,7 @@ with sync_playwright() as p:
     expect(page.locator('.results-summary h2')).to_have_text('지도 안 아파트 72곳')
     expect(page.locator('.test-cluster')).to_have_text('72')
     expect(page.locator('.apartment-card')).to_have_count(50)
-    page.get_by_role('button', name='환승 0회 더 보기', exact=True).click()
+    page.get_by_role('button', name='환승 0회 · 지하철 더 보기', exact=True).click()
     expect(page.locator('.apartment-card')).to_have_count(72)
     assert page.evaluate('window.__searchTest.createdMarkers') == 72
     calls = page.evaluate('window.__searchTest.calls.filter(call => call.query === "아파트")')

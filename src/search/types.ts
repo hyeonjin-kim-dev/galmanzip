@@ -74,7 +74,7 @@ export interface SearchPlan extends SearchProgress {
   source: TransitNetwork['source']
   coverage: string
 }
-export type RoutingTask = { kind: 'plan'; session: number; destination: Place; minutes: number; bounds: Bounds | null }
+export type RoutingTask = { kind: 'plan'; session: number; destination: Place; minutes: number; bounds: Bounds | null; maxTransfers: number }
   | { kind: 'next'; session: number; bounds: Bounds | null }
   | { kind: 'accept'; session: number; area: number; page: AreaPage; places: Place[]; minMinutes: number }
   | { kind: 'geometry'; destination: Place; apartment: ApartmentResult }
@@ -95,4 +95,5 @@ export interface SearchSnapshot {
   coverage?: string
   notice?: string
   pendingAreas?: Bounds[]
+  maxTransfers?: number
 }

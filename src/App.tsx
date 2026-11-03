@@ -37,7 +37,7 @@ export default function App() {
     setSelection(null)
   }
 
-  const search = async (place: Place, minMinutes: number, maxMinutes: number) => {
+  const search = async (place: Place, minMinutes: number, maxMinutes: number, maxTransfers: number) => {
     searchRef.current?.abort()
     const controller = new AbortController()
     searchRef.current = controller
@@ -54,7 +54,7 @@ export default function App() {
       controller.signal.throwIfAborted()
       await searchApartments(place, minMinutes, maxMinutes, controller.signal, next => {
         if (!controller.signal.aborted) dispatch({ type: 'snapshot', snapshot: next })
-      }, () => viewportRef.current)
+      }, () => viewportRef.current, maxTransfers)
     } catch (error) {
       if (!controller.signal.aborted) dispatch({ type: 'snapshot', snapshot: { ...initialView.snapshot, status: 'error',
         message: error instanceof Error ? error.message : '검색을 완료하지 못했습니다.' } })

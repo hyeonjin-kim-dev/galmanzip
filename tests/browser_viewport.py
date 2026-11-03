@@ -68,7 +68,7 @@ with sync_playwright() as p:
         expect(page.locator('[data-place-id="near"] .route-details')).to_have_attribute('open', '')
         expect(page.locator('.test-cluster')).to_have_text('2')
         assert page.evaluate('window.__searchTest.calls.length') == before
-        page.get_by_role('button', name='무환승·시간순 정렬', exact=True).click()
+        page.get_by_role('button', name='수단·시간순 정렬', exact=True).click()
         assert page.locator('.apartment-card').evaluate_all('(cards) => cards.map(card => card.dataset.placeId)') == ['far', 'near']
         for _ in range(4):
             page.get_by_role('button', name='지도 확대', exact=True).click()

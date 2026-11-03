@@ -1,5 +1,7 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { ApartmentResult, Place, RouteLeg, SearchSnapshot } from '../search/types'
+import { resultGroup, resultGroups } from '../search/resultOrder'
+import type { ResultGroup } from '../search/resultOrder'
 import RoutePreview from './RoutePreview'
 
 interface ApartmentResultsProps {
@@ -61,8 +63,10 @@ const ApartmentCard = memo(function ApartmentCard({ apartment, destination, sele
 })
 
 export default function ApartmentResults({ snapshot, results, viewLoading, onSort, destination, selectedId, onSelect }: ApartmentResultsProps) {
-  const [visibleCount, setVisibleCount] = useState({ direct: 50, transfer: 50 })
+  const [visibleCount, setVisibleCount] = useState<Record<ResultGroup, number>>({ rail: 50, express: 50, bus: 50, walk: 50, transfer: 50 })
   const listRef = useRef<HTMLDivElement>(null)
+  const groups = useMemo(() => resultGroups.map(group => ({ ...group,
+    items: results.filter(result => resultGroup(result) === group.key) })), [results])
 
   useEffect(() => {
     if (selectedId) listRef.current?.querySelector(`[data-place-id="${CSS.escape(selectedId)}"]`)?.scrollIntoView({ block: 'nearest' })
@@ -78,20 +82,17 @@ export default function ApartmentResults({ snapshot, results, viewLoading, onSor
   const message = snapshot.status !== 'loading' ? snapshot.message : viewLoading
     ? results.length ? '다른 집도 계속 찾고 있어요.' : '지도 주변의 집을 찾고 있어요.'
     : '다른 지역의 집도 확인 중이에요.'
-  const groups = [
-    { key: 'direct' as const, label: '환승 0회', items: results.filter(result => result.transfers === 0) },
-    { key: 'transfer' as const, label: '환승 1회 이상', items: results.filter(result => result.transfers > 0) },
-  ]
 
   return (
     <section className="apartment-results" aria-label="아파트 검색 결과" aria-busy={viewLoading && !results.length}>
       <div className="results-summary">
         <h2>지도 안 아파트 {results.length.toLocaleString('ko-KR')}곳</h2>
         <p>각 도보 구간이 5분 이하 · 직통 경로 우선</p>
+        {snapshot.maxTransfers !== undefined && <p>최대 환승 {snapshot.maxTransfers}회</p>}
         <p className="search-message" role={snapshot.status === 'error' ? 'alert' : 'status'} title={message}>{message}</p>
         <div className="results-actions">
-          <span>환승 0회 우선</span>
-          <button type="button" onClick={onSort} disabled={results.length < 2}>무환승·시간순 정렬</button>
+          <span>무환승 지하철 → 좌석버스 → 기타 버스</span>
+          <button type="button" onClick={onSort} disabled={results.length < 2}>수단·시간순 정렬</button>
         </div>
         <details className="results-notice">
           <summary>조회 기준과 주의사항</summary>
