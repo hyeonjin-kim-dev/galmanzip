@@ -78,9 +78,15 @@ with sync_playwright() as p:
         foreground = next(line for line in result['lines'] if line['opacity'] == 1)
         background = next(line for line in result['lines'] if line['opacity'] < 1)
         assert background['points'] == shape['points']
+        terminals = index.get('terminals', {}).get(identifier, [0, len(line['stops']) - 1])
+        expect(app.locator('.route-terminal-marker strong')).to_have_text([stops[line['stops'][i]]['name'] for i in terminals])
+        positions = app.locator('.map-canvas').evaluate('''() => window.__searchTest.overlays
+          .filter(overlay => overlay.map && overlay.content.classList.contains('route-terminal-marker'))
+          .map(overlay => ({lat: overlay.options.position.getLat(), lng: overlay.options.position.getLng()}))''')
+        assert positions == [shape['points'][shape['stopIndexes'][i]] for i in terminals]
         assert foreground['points'] == shape['points'][shape['stopIndexes'][ride['fromIndex']]:shape['stopIndexes'][ride['toIndex']] + 1]
         assert len(foreground['points']) > ride['toIndex'] - ride['fromIndex'] + 1
         assert not errors, errors
         context.close()
-        print(mode, f'실제 {line["name"]} 계산·직행좌석 빨강·도로 좌표 {len(background["points"])}개·정확한 탑승 구간 분리 검증 통과', flush=True)
+        print(mode, f'실제 {line["name"]} 계산·직행좌석 빨강·도로 좌표 {len(background["points"])}개·탑승 구간 분리·기점/회차 종점 검증 통과', flush=True)
     browser.close()

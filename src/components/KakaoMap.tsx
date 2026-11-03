@@ -221,6 +221,20 @@ export default memo(function KakaoMap({ results, destination, selection, allResu
         strokeStyle: 'solid', endArrow: false, zIndex: 1 })
       line.setMap(map)
       overlays.push(line)
+      for (const terminal of busLine.terminals) {
+        const content = document.createElement('span')
+        content.className = 'route-terminal-marker'
+        content.style.setProperty('--route-color', appearances[busLine.legIndex].color)
+        const caption = document.createElement('small'), name = document.createElement('strong')
+        caption.textContent = `${selected.legs[busLine.legIndex].line} · ${terminal.label}`
+        name.textContent = terminal.name
+        content.append(caption, name)
+        content.title = `${caption.textContent} · ${terminal.name}`
+        const marker = new maps.CustomOverlay({ position: new maps.LatLng(terminal.point.lat, terminal.point.lng),
+          content, yAnchor: 1, zIndex: 2 })
+        marker.setMap(map)
+        overlays.push(marker)
+      }
     }
     for (const segment of geometry.segments) {
       const leg = selected.legs[segment.legIndex], appearance = appearances[segment.legIndex]

@@ -87,6 +87,7 @@ with sync_playwright() as p:
         expect(fast.locator('.route-transit-stops')).to_contain_text('2개 정류장')
         assert active(app) == []
         assert active(app, full_bus=True) == []
+        expect(app.locator('.route-terminal-marker')).to_have_count(0)
         fast.locator('.route-gauge-button').click()
         expect(app.get_by_text('정류장 연결 경로', exact=True)).to_be_visible()
         pause(app)
@@ -97,6 +98,12 @@ with sync_playwright() as p:
         assert len(full_bus) == 1
         assert full_bus[0]['path'] == [[37.47, 127.2], [37.4, 127.1], [37.45, 127.17], [37.4, 127.16], [37.47, 127.22]]
         assert full_bus[0]['color'] == active(app)[0]['color']
+        expect(app.locator('.route-terminal-marker strong')).to_have_text(['버스 기점', '버스 종점'])
+        expect(app.locator('.route-terminal-marker small')).to_have_text(['102번 · 기점', '102번 · 종점'])
+        assert evaluate(app, '''() => window.__searchTest.overlays.filter(overlay => overlay.map && overlay.content.classList.contains('route-terminal-marker'))
+          .every(overlay => overlay.options.zIndex < 5 && overlay.content.style.getPropertyValue('--route-color') === '#E60012')''')
+        app.locator('.route-terminal-marker').first.screenshot(path=f'/tmp/galmanzip-terminal-{mode}.png',
+            style='.map-route-info, .destination-search { visibility: hidden !important; }')
         assert 0 < full_bus[0]['opacity'] < .4 and full_bus[0]['weight'] < active(app)[0]['weight']
         assert full_bus[0]['zIndex'] < active(app)[0]['zIndex']
         assert all(not item['arrow'] for item in full_bus + active(app))
@@ -116,6 +123,7 @@ with sync_playwright() as p:
         assert len(active(app, full_bus=True)) == 1
         assert active(app, full_bus=True)[0]['path'] == [[37.4, 127.13], [37.4, 127.16], [37.47, 127.22]]
         assert active(app, full_bus=True)[0]['color'] == active(app)[1]['color']
+        expect(app.locator('.route-terminal-marker strong')).to_have_text(['검증 환승역', '버스 종점'])
         assert evaluate(app, '() => window.__previousLines.every(line => !line.map)')
         assert evaluate(app, '() => window.__planCompact')
         assert evaluate(app, '() => document.documentElement.scrollWidth <= innerWidth')
@@ -226,6 +234,7 @@ with sync_playwright() as p:
     page.get_by_role('option', name='20분 ~ 30분', exact=True).click()
     assert active(page) == []
     assert active(page, full_bus=True) == []
+    expect(page.locator('.route-terminal-marker')).to_have_count(0)
     expect(page.locator('.map-route-info')).to_have_count(0)
     assert not errors, errors
     context.close()

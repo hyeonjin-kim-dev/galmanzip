@@ -31,6 +31,23 @@ test('탑승 구간과 연한 전체 노선은 동일한 도로 좌표를 잘라
   assert.deepEqual(geometry.segments[0].points, points.slice(2))
   assert.deepEqual(geometry.roadBusLines, [line.id])
   assert.deepEqual(geometry.sources, [shape.source])
+  assert.deepEqual(geometry.busLines[0].terminals, [
+    { name: 'A', point: points[0], label: '기점' }, { name: 'C', point: points[4], label: '종점' },
+  ])
+})
+
+test('기·종점은 파일에서 대조한 정류장과 도로 좌표에 표시하며 별도 요청을 추가하지 않는다', async t => {
+  const index = { version: 1, patterns: { [line.id]: asset }, terminals: { [line.id]: [0, 1] } }
+  let calls = 0
+  t.mock.method(globalThis, 'fetch', async () => ++calls === 1 ? Response.json(index)
+    : new Response(Uint8Array.from(gzipSync(JSON.stringify(shape))).buffer))
+  const shapes = await createBusShapeLoader(network, 'https://example.org/data/transit.json')(apartment)
+  assert.deepEqual(createRouteGeometry(network)(apartment, destination, shapes).busLines[0].terminals,
+    [{ name: 'A', point: points[0], label: '기점' }, { name: 'B', point: points[2], label: '종점' }])
+  assert.equal(calls, 2)
+  for (const invalid of [[1, 2], [0, 3], [0, -1], [0, 1.5], [0], [0, 0]]) {
+    assert.throws(() => validateBusShape({ ...shape, terminalStopIndexes: invalid }, line, network), /순서/)
+  }
 })
 
 test('다른 운행 순서·역방향·멀리 떨어진 정류장·잘못된 출처의 선형은 사용하지 않는다', () => {

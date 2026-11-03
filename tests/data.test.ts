@@ -87,7 +87,7 @@ test('실제 버스·지하철 자료에서 환승 없이 갈 수 있는 구간�
     if (mode === 'bus') {
       const pattern = network.lines.find(line => line.id === leg.lineId)!
       const stops = new Map(network.stops.map(stop => [stop.id, stop]))
-      assert.deepEqual(geometry.busLines, [{ legIndex: ride.legIndex,
+      assert.deepEqual(geometry.busLines.map(({ legIndex, points }) => ({ legIndex, points })), [{ legIndex: ride.legIndex,
         points: pattern.stops.map(id => ({ lat: stops.get(id)!.lat, lng: stops.get(id)!.lng })) }])
     } else assert.deepEqual(geometry.busLines, [])
   }

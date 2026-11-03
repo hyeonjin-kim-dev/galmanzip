@@ -1,4 +1,5 @@
 import type { ApartmentResult, BusRoadShape, Place, Point, RouteGeometry, TransitNetwork } from './types.ts'
+import { distance } from './routing.ts'
 
 export function createRouteGeometry(network: TransitNetwork) {
   const stops = new Map(network.stops.map(stop => [stop.id, stop]))
@@ -30,7 +31,14 @@ export function createRouteGeometry(network: TransitNetwork) {
           : line.stops.slice(start, end + 1).map(id => point(id, apartment))
         if (road) { roadBusLines.add(line.id); sources.set(`${road.source.url}:${road.source.date}`, road.source) }
         if (line.mode === 'bus' && !included.has(line.id)) {
-          busLines.push({ legIndex, points: road?.points ?? line.stops.map(id => point(id, apartment)) })
+          const first = stops.get(line.stops[0])!, last = stops.get(line.stops.at(-1)!)!
+          const circular = first.id === last.id || (first.name === last.name && distance(first, last) <= 100)
+          // 왕복 노선은 전체 파일에서 확인한 회차 정류장을 쓰고, 미확인 순환 노선의 반대편 종점을 추측하지 않는다.
+          const endpoints = road?.terminalStopIndexes ?? (circular ? [0] : [0, line.stops.length - 1])
+          const terminals = endpoints.map((index, order) => ({ name: stops.get(line.stops[index])!.name,
+            point: road ? road.points[road.stopIndexes[index]] : point(line.stops[index], apartment),
+            label: endpoints.length === 1 ? '기·종점' : order === 0 ? '기점' : '종점' }))
+          busLines.push({ legIndex, points: road?.points ?? line.stops.map(id => point(id, apartment)), terminals })
           included.add(line.id)
         }
       }

@@ -1,6 +1,6 @@
 // 브라우저 검증 전용 SDK 대역이다. 이 파일과 가상 장소는 배포에 포함하지 않는다.
 (() => {
-  const state = window.__searchTest = { calls: [], markers: [], polylines: [], createdMarkers: 0, failAfter: Infinity, delay: 10, pageSize: 2, cappedTotal: false, clusterOptions: null }
+  const state = window.__searchTest = { calls: [], markers: [], polylines: [], overlays: [], createdMarkers: 0, failAfter: Infinity, delay: 10, pageSize: 2, cappedTotal: false, clusterOptions: null }
   class LatLng {
     constructor(lat, lng) { this.lat = lat; this.lng = lng }
     getLat() { return this.lat }
@@ -49,8 +49,8 @@
     setMap(map) { this.map = map }
   }
   class CustomOverlay {
-    constructor(options) { this.content = options.content }
-    setMap(map) { if (map) map.container.append(this.content); else this.content.remove() }
+    constructor(options) { this.options = options; this.content = options.content; state.overlays.push(this) }
+    setMap(map) { this.map = map; if (map) map.container.append(this.content); else this.content.remove() }
   }
   class MarkerClusterer {
     constructor(options) { this.options = options; state.clusterOptions = options; state.clusterer = this }

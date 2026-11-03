@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { decodeNetwork } from '../src/search/data.ts'
-import { validateBusShape } from '../src/search/busShapes.ts'
+import { validTerminalIndexes, validateBusShape } from '../src/search/busShapes.ts'
 
 const root = new URL('../public/data/', import.meta.url)
 const manifest = JSON.parse(readFileSync(new URL('transit.json', root), 'utf8'))
@@ -14,6 +14,10 @@ if (index.version !== 1 || !index.patterns || typeof index.patterns !== 'object'
   throw new Error('버스 도로 좌표 색인 형식이 올바르지 않습니다.')
 }
 const lines = new Map(network.lines.map(line => [line.id, line]))
+for (const [id, endpoints] of Object.entries(index.terminals ?? {})) {
+  const line = lines.get(id)
+  if (!line || !index.patterns[id] || !validTerminalIndexes(endpoints, line)) throw new Error('버스 기·종점과 운행 순서가 일치하지 않습니다.')
+}
 for (const [id, asset] of Object.entries(index.patterns)) {
   if (typeof asset !== 'string' || !/^shape-[a-f0-9]{12}\.json\.gz$/.test(asset)) throw new Error('버스 도로 좌표 파일명이 올바르지 않습니다.')
   const line = lines.get(id)

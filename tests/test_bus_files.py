@@ -22,7 +22,7 @@ CATALOG = b'''<response><msgHeader><resultCode>0</resultCode></msgHeader><msgBod
 
 
 class FileTest(unittest.TestCase):
-    def fixture(self, folder, delimiter='|', header=True, encoding='utf-8-sig', record_separator='\r\n'):
+    def fixture(self, folder, delimiter='|', header=True, encoding='utf-8-sig', record_separator='\r\n', directions=None):
         directory, network = Path(folder) / '전체 파일', Path(folder) / '교통 자료'
         directory.mkdir(exist_ok=True)
         network.mkdir(exist_ok=True)
@@ -39,7 +39,7 @@ class FileTest(unittest.TestCase):
                     writer.writerow(['206000007', index + 1, 0, 0, point['lng'], point['lat']])
             else:
                 for index, point in enumerate(STATIONS):
-                    writer.writerow(['206000007', '102번', 0, index + 1, point['id'], '검증 정류장, 별칭', point['lng'], point['lat']])
+                    writer.writerow(['206000007', '102번', directions[index] if directions else 0, index + 1, point['id'], '검증 정류장, 별칭', point['lng'], point['lat']])
             payload = text.getvalue().encode(encoding)
             name = kind + '.txt.gz'
             (directory / name).write_bytes(gzip.compress(payload, mtime=0))
@@ -109,6 +109,33 @@ class FileTest(unittest.TestCase):
             self.assertEqual(audit['preparedPatterns'], 1)
             self.assertEqual(audit['sourceFiles']['routeline']['rows'], 5)
             self.assertEqual(audit['sourceFiles']['routestation']['rows'], 3)
+
+    def test_roundtrip_terminal_uses_direction_change_not_last_repeated_origin(self):
+        line = {**LINE, 'stops': LINE['stops'] + [LINE['stops'][0]]}
+        stations = [{**station, 'direction': direction} for station, direction in
+                    zip(STATIONS + [STATIONS[0]], ['상행', '상행', '하행', '하행'])]
+        self.assertEqual(FILES.terminal_indexes(line, STOPS, stations), [0, 2])
+        for altered in ([{**station, 'direction': '상행'} for station in stations],
+                        [stations[0], {**stations[1], 'direction': '하행'}, {**stations[2], 'direction': '상행'}, stations[3]],
+                        [{**station, 'lat': station['lat'] + .01} for station in stations]):
+            self.assertIsNone(FILES.terminal_indexes(line, STOPS, altered))
+        for ids in ([line['stops'][0], line['stops'][1], line['stops'][-1]], line['stops'][1:]):
+            self.assertIsNone(FILES.terminal_indexes({**line, 'stops': ids}, STOPS, stations))
+
+    def test_terminal_only_update_keeps_shape_files_and_never_calls_api(self):
+        with tempfile.TemporaryDirectory() as folder:
+            directory, network = self.fixture(folder, directions=['상행', '하행', '하행'])
+            output = Path(folder) / '좌표'
+            with redirect_stdout(io.StringIO()):
+                FILES.prepare_files(directory, network, output)
+            before = {path.name: path.read_bytes() for path in output.glob('*.gz')}
+            index = json.loads((output / 'index.json').read_text())
+            self.assertEqual(index['terminals'][LINE['id']], [0, 1])
+            with patch.object(FILES, 'open_resource') as request, redirect_stdout(io.StringIO()):
+                FILES.prepare_terminals(directory, network, output)
+            request.assert_not_called()
+            self.assertEqual(json.loads((output / 'index.json').read_text()), index)
+            self.assertEqual({path.name: path.read_bytes() for path in output.glob('*.gz')}, before)
 
     def test_supported_delimiters_encodings_and_headerless_official_order(self):
         for delimiter, header, encoding in [('|', True, 'utf-8-sig'), ('^', True, 'cp949'),

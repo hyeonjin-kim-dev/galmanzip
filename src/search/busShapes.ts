@@ -5,6 +5,11 @@ import type { ApartmentResult, BusRoadShape, TransitLine, TransitNetwork } from 
 const assetName = /^shape-[a-f0-9]{12}\.json\.gz$/
 const sourceUrls = new Set(['https://www.data.go.kr/data/15080662/openapi.do', 'https://www.data.go.kr/data/15080658/openapi.do'])
 
+export function validTerminalIndexes(value: unknown, line: TransitLine): value is number[] {
+  return Array.isArray(value) && value.length === 2 && value[0] === 0
+    && Number.isInteger(value[1]) && value[1] > 0 && value[1] < line.stops.length
+}
+
 export function validateBusShape(value: unknown, line: TransitLine, network: TransitNetwork): BusRoadShape {
   const data = value as BusRoadShape | undefined
   if (!data || data.version !== 1 || line.mode !== 'bus' || data.lineId !== line.id
@@ -17,6 +22,7 @@ export function validateBusShape(value: unknown, line: TransitLine, network: Tra
     || data.stopIndexes.some((index, position) => !Number.isInteger(index) || index < 0 || index >= data.points.length
       || (position > 0 && index < data.stopIndexes[position - 1]))
     || data.stopIndexes[0] !== 0 || data.stopIndexes.at(-1) !== data.points.length - 1
+    || (data.terminalStopIndexes !== undefined && !validTerminalIndexes(data.terminalStopIndexes, line))
     || typeof data.source?.name !== 'string' || !data.source.name.trim()
     || typeof data.source.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(data.source.date)
     || typeof data.source.license !== 'string' || !data.source.license.trim()
@@ -34,7 +40,7 @@ export function validateBusShape(value: unknown, line: TransitLine, network: Tra
 }
 
 export function createBusShapeLoader(network: TransitNetwork, networkUrl: string) {
-  let index: Promise<Record<string, string>> | undefined
+  let index: Promise<{ patterns: Record<string, string>; terminals?: Record<string, unknown> }> | undefined
   const files = new Map<string, Promise<unknown>>()
   const base = new URL('bus-shapes/', networkUrl)
   const read = async (url: URL, cache?: RequestCache) => {
@@ -50,11 +56,11 @@ export function createBusShapeLoader(network: TransitNetwork, networkUrl: string
     const result = new Map<string, BusRoadShape>()
     if (!selected.length) return result
     index ??= read(new URL('index.json', base), 'no-cache').then(value => {
-      const data = value as { version?: number; patterns?: Record<string, string> }
-      if (data?.version !== 1 || !data.patterns || typeof data.patterns !== 'object' || Array.isArray(data.patterns)) return {}
-      return data.patterns
-    }).catch(() => ({}))
-    const patterns = await index
+      const data = value as { version?: number; patterns?: Record<string, string>; terminals?: Record<string, unknown> }
+      if (data?.version !== 1 || !data.patterns || typeof data.patterns !== 'object' || Array.isArray(data.patterns)) return { patterns: {} }
+      return { patterns: data.patterns, terminals: data.terminals }
+    }).catch(() => ({ patterns: {} }))
+    const { patterns, terminals } = await index
     await Promise.all(selected.map(async line => {
       const asset = patterns[line.id]
       if (typeof asset !== 'string' || !assetName.test(asset)) return
@@ -63,7 +69,9 @@ export function createBusShapeLoader(network: TransitNetwork, networkUrl: string
           files.set(asset, read(new URL(asset, base)).catch(() => undefined))
           if (files.size > 16) files.delete(files.keys().next().value!)
         }
-        result.set(line.id, validateBusShape(await files.get(asset), line, network))
+        const shape = validateBusShape(await files.get(asset), line, network)
+        const endpoints = terminals?.[line.id]
+        result.set(line.id, validTerminalIndexes(endpoints, line) ? { ...shape, terminalStopIndexes: endpoints } : shape)
       } catch { /* 확인할 수 없는 선형은 기존 정류장 연결선으로 표시한다. */ }
     }))
     return result

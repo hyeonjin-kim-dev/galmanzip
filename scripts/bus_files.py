@@ -218,6 +218,7 @@ def read_table(path, kind, wanted):
                     if not re.fullmatch(r'\d{9}', value['stationId']):
                         raise ValueError()
                     item['id'] = value['stationId']
+                    item['direction'] = value['upDown']
                 group = groups.setdefault(identifier, [])
                 group.append(item)
                 if len(group) > 50000:
@@ -267,6 +268,47 @@ def verify_files(directory):
     return report, date
 
 
+def terminal_indexes(line, stops, stations):
+    """왕복 노선의 상행→하행 전환 정류장을 현재 운행 순서와 대조한다."""
+    directions = [station.get('direction') for station in stations]
+    changes = [i for i in range(1, len(directions)) if directions[i] != directions[i - 1]]
+    if not directions or directions[0] != '상행' or directions[-1] != '하행' or len(changes) != 1:
+        return None
+    ids = [SHAPES.STOP.fullmatch(identifier) for identifier in line['stops']]
+    if not all(ids):
+        return None
+    try:
+        order = SHAPES.align_stations([match[1] for match in ids], stations)
+    except DataError:
+        return None
+    # 일부 구간만 포함한 운행 패턴을 전체 노선의 기·종점으로 오인하지 않는다.
+    if order[0] != 0 or order[-1] != len(stations) - 1 or changes[0] not in order:
+        return None
+    if any(SHAPES.metres(stops[identifier], stations[index]) > 80 for identifier, index in zip(line['stops'], order)):
+        return None
+    return [0, order.index(changes[0])]
+
+
+def prepare_terminals(directory, network_dir, output):
+    """기존 도로 좌표를 다시 만들지 않고 같은 원본의 기·종점 정보만 보완한다."""
+    report, date = verify_files(directory)
+    manifest = json.loads((network_dir / 'transit.json').read_text())
+    network = json.loads(gzip.decompress((network_dir / manifest['asset']).read_bytes()))
+    index = json.loads((output / 'index.json').read_text())
+    stops = {stop['id']: stop for stop in network['stops']}
+    lines = [line for line in network['lines'] if line['id'] in index['patterns'] and SHAPES.ROUTE.fullmatch(line['id'])]
+    stations, _ = read_table(directory / report['files']['routestation']['file'], 'routestation',
+                             {SHAPES.ROUTE.fullmatch(line['id'])[1] for line in lines})
+    index['terminals'] = {}
+    for line in lines:
+        endpoints = terminal_indexes(line, stops, stations.get(SHAPES.ROUTE.fullmatch(line['id'])[1], []))
+        if endpoints:
+            index['terminals'][line['id']] = endpoints
+    index['terminalSource'] = {'url': SOURCE, 'date': date}
+    (output / 'index.json').write_text(json.dumps(index, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print(f"전체 파일의 기·종점 {len(index['terminals'])}개 운행 패턴 준비 완료 · 외부 요청 없음")
+
+
 def prepare_files(directory, network_dir, output, api_requests=0):
     report, date = verify_files(directory)
     manifest = json.loads((network_dir / 'transit.json').read_text())
@@ -282,7 +324,7 @@ def prepare_files(directory, network_dir, output, api_requests=0):
         tables[kind], invalid = read_table(directory / report['files'][kind]['file'], kind, groups)
         rejected.update(invalid)
     output.mkdir(parents=True, exist_ok=True)
-    index = {'version': 1, 'patterns': {}}
+    index = {'version': 1, 'patterns': {}, 'terminals': {}, 'terminalSource': {'url': SOURCE, 'date': date}}
     existing = network_dir / 'bus-shapes'
     current = {line['id'] for line in network['lines']}
     if (existing / 'index.json').exists():
@@ -308,6 +350,9 @@ def prepare_files(directory, network_dir, output, api_requests=0):
                 asset = 'shape-' + hashlib.sha256(payload).hexdigest()[:12] + '.json.gz'
                 (output / asset).write_bytes(gzip.compress(payload, mtime=0))
                 index['patterns'][line['id']] = asset
+                endpoints = terminal_indexes(line, stops, stations)
+                if endpoints:
+                    index['terminals'][line['id']] = endpoints
                 prepared.add(line['id'])
             except DataError as error:
                 reasons[str(error)] += 1
@@ -337,12 +382,16 @@ if __name__ == '__main__':
     source.add_argument('--files', type=Path)
     parser.add_argument('--network', type=Path, default=Path('public/data'))
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--terminals-only', action='store_true', help='기존 도로 좌표를 유지하고 전체 파일의 기·종점 정보만 보완')
     args = parser.parse_args()
     try:
         if args.download:
             download_files(args.download, os.environ.get('DATA_GO_KR_SERVICE_KEY', ''))
         if args.output:
-            prepare_files(args.files or args.download, args.network, args.output, api_requests=1 if args.download else 0)
+            if args.terminals_only:
+                prepare_terminals(args.files or args.download, args.network, args.output)
+            else:
+                prepare_files(args.files or args.download, args.network, args.output, api_requests=1 if args.download else 0)
     except (DataError, ApiError) as error:
         raise SystemExit(str(error)) from None
     except (OSError, UnicodeError, csv.Error, json.JSONDecodeError):

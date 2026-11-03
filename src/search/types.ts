@@ -54,7 +54,7 @@ export interface ReachabilitySummary extends Omit<Reachability, 'stops'> {
 }
 export interface RouteGeometry {
   segments: { legIndex: number; points: Point[] }[]
-  busLines: { legIndex: number; points: Point[] }[]
+  busLines: { legIndex: number; points: Point[]; terminals: { name: string; point: Point; label: string }[] }[]
   roadBusLines: string[]
   sources: BusRoadShape['source'][]
 }
@@ -63,6 +63,7 @@ export interface BusRoadShape {
   lineId: string
   stopIds: string[]
   stopIndexes: number[]
+  terminalStopIndexes?: number[]
   points: Point[]
   source: { name: string; url: string; date: string; license: string }
 }

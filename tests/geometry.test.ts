@@ -82,7 +82,8 @@ test('버스 전체 노선은 승하차 전후와 순환 정류장을 포함하�
   const legIndex = result.legs.findIndex(leg => leg.mode === 'bus')
   assert.equal(result.legs[legIndex].lineId, '정방향')
   assert.deepEqual(geometry.segments.map(segment => segment.points), [points(['A', 'B', 'C'])])
-  assert.deepEqual(geometry.busLines, [{ legIndex, points: points(['D', 'A', 'B', 'C', 'D']) }])
+  assert.deepEqual(geometry.busLines, [{ legIndex, points: points(['D', 'A', 'B', 'C', 'D']),
+    terminals: [{ name: '환승 승강장', point: points(['D'])[0], label: '기·종점' }] }])
 })
 
 test('버스를 갈아타면 이용한 버스마다 전체 노선과 탑승 구간을 구분한다', () => {
@@ -97,8 +98,10 @@ test('버스를 갈아타면 이용한 버스마다 전체 노선과 탑승 구�
   assert.equal(result.transfers, 1)
   const geometry = createRouteGeometry(graph)(result, place(2))
   assert.deepEqual(geometry.busLines, [
-    { legIndex: result.legs.findIndex(leg => leg.lineId === '첫 버스'), points: points(['A', 'B']) },
-    { legIndex: result.legs.findIndex(leg => leg.lineId === '둘째 버스'), points: points(['D', 'C']) },
+    { legIndex: result.legs.findIndex(leg => leg.lineId === '첫 버스'), points: points(['A', 'B']), terminals: [
+      { name: '같은 이름', point: points(['A'])[0], label: '기점' }, { name: '같은 이름', point: points(['B'])[0], label: '종점' }] },
+    { legIndex: result.legs.findIndex(leg => leg.lineId === '둘째 버스'), points: points(['D', 'C']), terminals: [
+      { name: '환승 승강장', point: points(['D'])[0], label: '기점' }, { name: '도착역', point: points(['C'])[0], label: '종점' }] },
   ])
 })
 
@@ -111,7 +114,10 @@ test('같은 버스 운행 패턴에 재승차해도 전체 노선을 겹쳐 그
   assert.equal(result.transfers, 1)
   assert.equal(result.legs.filter(leg => leg.mode === 'bus').length, 2)
   const geometry = createRouteGeometry(graph)(result, place(2))
-  assert.deepEqual(geometry.busLines, [{ legIndex: result.legs.findIndex(leg => leg.mode === 'bus'), points: points(['A', 'B', 'D', 'C']) }])
+  assert.equal(geometry.busLines.length, 1)
+  assert.equal(geometry.busLines[0].legIndex, result.legs.findIndex(leg => leg.mode === 'bus'))
+  assert.deepEqual(geometry.busLines[0].points, points(['A', 'B', 'D', 'C']))
+  assert.deepEqual(geometry.busLines[0].terminals.map(terminal => terminal.name), ['같은 이름', '도착역'])
 })
 
 test('달라진 운행 패턴을 이름이나 첫 정류장 일치만으로 추측해서 그리지 않는다', () => {
