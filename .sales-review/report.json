@@ -1,0 +1,7 @@
+{
+  "checkedAt": "2026-11-09T15:37:20.974886+09:00",
+  "source": "https://www.data.go.kr/data/15126468/openapi.do",
+  "status": "unavailable",
+  "message": "실거래가 API 응답 오류: 제공기관 코드 30, HTTP 403.",
+  "codePage": "ready"
+}
