@@ -2,6 +2,10 @@
 import importlib.util
 import unittest
 from datetime import date
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
+from contextlib import redirect_stdout
+import io
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location('sales', Path(__file__).resolve().parents[1] / 'scripts/prepare_sales.py')
@@ -45,3 +49,23 @@ class SalesTest(unittest.TestCase):
 
     def test_month_window_across_years(self):
         self.assertEqual(SALES.month_range(date(2026, 11, 9)), ['202512'] + [f'2026{i:02d}' for i in range(1, 12)])
+
+    def test_temporary_connection_failure_retries_and_auth_failure_preserves_old_data(self):
+        config = {'districts': [{'code': str(11100 + i), 'name': f'검증 지역 {i}'} for i in range(50)], 'source': '검증', 'sourceSha256': '검증'}
+        attempts = 0
+        def fetch(*args):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise SALES.NetworkError('검증용 일시적 지연')
+            return [], 0
+        with TemporaryDirectory() as directory, redirect_stdout(io.StringIO()), patch.object(SALES, 'month_range', return_value=['202610']), patch.object(SALES.threading.Event, 'wait', return_value=False):
+            output = Path(directory) / 'sales'
+            with patch.object(SALES, 'fetch_page', side_effect=fetch):
+                SALES.collect(output, '검증용', config, date(2026, 10, 31))
+            self.assertEqual(attempts, 52)
+            original = (output / 'index.json').read_bytes()
+            with patch.object(SALES, 'fetch_page', side_effect=SALES.ApiError('30', 403)):
+                with self.assertRaises(SALES.ApiError):
+                    SALES.collect(output, '검증용', config, date(2026, 10, 31))
+            self.assertEqual((output / 'index.json').read_bytes(), original)

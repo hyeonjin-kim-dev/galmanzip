@@ -31,6 +31,10 @@ class DataError(Exception):
     pass
 
 
+class NetworkError(DataError):
+    pass
+
+
 class ApiError(DataError):
     def __init__(self, code, status=None):
         self.code, self.status = code, status
@@ -79,7 +83,7 @@ def fetch_page(key, district, month, page=1, size=1000):
             error.close()
         raise ApiError('미확인', error.code) from None
     except (URLError, TimeoutError, OSError):
-        raise DataError('실거래가 API에 연결하지 못했습니다. 인증키와 요청 주소는 출력하지 않습니다.') from None
+        raise NetworkError('실거래가 API에 연결하지 못했습니다. 인증키와 요청 주소는 출력하지 않습니다.') from None
     if len(payload) > 16 * 1024 * 1024:
         raise DataError('실거래가 응답 크기가 예상 범위를 넘었습니다.')
     return parse_page(payload)
@@ -227,6 +231,12 @@ def collect(output, key, config, today=None):
                 raise DataError('자료 수집이 중단됐습니다.')
             try:
                 return fetch_page(key, district, month, page)
+            except NetworkError:
+                if attempt < 2:
+                    print(f'{district} {month} {page}페이지 연결 지연: 재시도 {attempt + 1}', flush=True)
+                    stop.wait(5 * (attempt + 1))
+                    continue
+                raise
             except ApiError as error:
                 if (error.code in ('01', '04', '05', '23') or error.status in (500, 502, 503, 504)) and attempt < 2:
                     stop.wait(5 * (attempt + 1))
