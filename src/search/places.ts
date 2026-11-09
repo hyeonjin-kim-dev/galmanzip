@@ -8,6 +8,7 @@ export function toPlace(data: PlaceData): Place | null {
   const lat = Number(data.y), lng = Number(data.x)
   if (!data.id || !data.place_name || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
   return { id: data.id, name: data.place_name, address: data.road_address_name || data.address_name,
+    roadAddress: data.road_address_name || undefined, lotAddress: data.address_name || undefined,
     lat, lng, url: `https://place.map.kakao.com/${encodeURIComponent(data.id)}` }
 }
 

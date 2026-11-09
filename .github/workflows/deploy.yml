@@ -32,6 +32,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_*.py'
       - name: 버스 도로 좌표 검증
         run: node --experimental-strip-types scripts/validate-bus-shapes.ts
+      - name: 매매 실거래가 검증
+        run: node --experimental-strip-types scripts/validate-sales.ts
       - name: 타입 검사와 빌드
         env:
           VITE_KAKAO_MAP_KEY: ${{ vars.VITE_KAKAO_MAP_KEY }}

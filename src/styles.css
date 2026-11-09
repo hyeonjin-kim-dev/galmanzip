@@ -498,6 +498,18 @@ summary { cursor: pointer; }
 }
 
 .apartment-provider { margin: 4px 0; color: #6d747b; font-size: 12px; }
+.apartment-sale { min-height: 138px; margin: 10px 0; border-radius: 6px; padding: 9px 10px; background: #f4f5f6; color: #464c53; }
+.apartment-sale-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-height: 23px; }
+.apartment-sale-main > span { flex-shrink: 0; color: #6d747b; font-size: 12px; }
+.apartment-sale-main strong { font-size: 15px; line-height: 1.5; }
+.apartment-sale:not([data-status='matched']) .apartment-sale-main strong { color: #6d747b; font-size: 13px; font-weight: 400; }
+.apartment-sale-meta { min-height: 18px; margin: 2px 0; font-size: 11px; line-height: 18px; }
+.apartment-sale-source { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; min-height: 17px; color: #6d747b; font-size: 10px; line-height: 17px; }
+.apartment-sale-source a { color: inherit; }
+.apartment-sale-source button { border: 0; padding: 0; background: transparent; color: #256ef4; font-size: 11px; cursor: pointer; }
+.sale-transactions { margin-top: 6px; font-size: 12px; }
+.sale-transactions ul { display: grid; gap: 5px; margin: 8px 0 0; padding: 0; list-style: none; }
+.sale-transactions li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; }
 
 .search-message { min-height: 22px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .results-summary h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

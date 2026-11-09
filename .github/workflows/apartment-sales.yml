@@ -24,12 +24,20 @@ jobs:
     steps:
       - name: 소스 가져오기
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Node.js 준비
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
       - name: 실거래가 처리 검사
         run: python3 -m unittest discover -s tests -p 'test_sales.py'
       - name: 매매 실거래 자료 수집
         env:
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
         run: python3 scripts/prepare_sales.py --output public/data/sales
+      - name: 배포 전 금액·주소·파일 무결성 확인
+        run: node --experimental-strip-types scripts/validate-sales.ts
       - name: 검토 자료 보관
         run: |
           git config user.name 'github-actions[bot]'

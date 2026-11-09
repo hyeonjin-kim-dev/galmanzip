@@ -1,7 +1,7 @@
 import type { Bounds } from './bounds.ts'
 
 export interface Point { lat: number; lng: number }
-export interface Place extends Point { id: string; name: string; address: string; url: string }
+export interface Place extends Point { id: string; name: string; address: string; url: string; roadAddress?: string; lotAddress?: string }
 export interface Stop extends Point { id: string; name: string; mode?: 'bus' | 'rail' }
 export interface TransitLine {
   id: string

@@ -3,6 +3,7 @@ import type { ApartmentResult, Place, RouteLeg, SearchSnapshot } from '../search
 import { resultGroup, resultGroups } from '../search/resultOrder'
 import type { ResultGroup } from '../search/resultOrder'
 import RoutePreview from './RoutePreview'
+import ApartmentSalePrice from './ApartmentSalePrice'
 
 interface ApartmentResultsProps {
   snapshot: SearchSnapshot
@@ -40,6 +41,7 @@ const ApartmentCard = memo(function ApartmentCard({ apartment, destination, sele
       </button>
       <p className="apartment-provider">교통 자료 추정 · 대기시간 제외</p>
       <p className="apartment-address">{apartment.address}</p>
+      <ApartmentSalePrice apartment={apartment} />
       <p className="apartment-stop">{apartment.startStop === '도보 이동' ? '목적지까지 도보 이동' : `출발 정류장 · ${apartment.startStop}`}</p>
       <RoutePreview legs={apartment.legs} selected={selected} onSelect={() => onSelect(apartment.id)} />
       <details className="route-details">
@@ -102,7 +104,8 @@ export default function ApartmentResults({ snapshot, results, mapCount, viewLoad
           {snapshot.notice && <p>{snapshot.notice}</p>}
           <p>출발·각 환승·도착의 도보 구간이 각각 5분 이하이고 선택한 최대 시간 내인 경로에서 환승 없는 경로를 우선합니다. 자료에 없는 노선 주변 아파트는 누락될 수 있습니다.</p>
           <p>도보·탑승·환승 도보를 합한 추정 시간이며 버스·지하철을 기다리는 시간은 제외합니다. 운행일·시간대, 교통 상황과 실제 보행 경로에 따라 달라집니다. 10분 이상 여유를 두고 카카오맵 길찾기에서 확인해 주세요. 오차가 10분 이내임을 보장하지 않습니다.</p>
-          <p>아파트 위치 정보이며 현재 매물이나 실거래 가격이 아닙니다. 네이버 부동산에서 복사한 단지명으로 매매·전세·월세를 확인하세요. 장소 검색에 등록되지 않은 아파트는 제외됩니다.</p>
+          <p>최근 매매가는 국토교통부 공개 자료의 최근 12개월 중 해제되지 않은 최신 계약일 기준이며 매물 호가가 아닙니다. 면적·층에 따라 가격이 다르고 신고 지연·정정·해제로 바뀔 수 있습니다. 화면의 수집일을 확인해 주세요. 주소 대조가 되지 않거나 해당 기간 자료가 없으면 가격을 표시하지 않습니다.</p>
+          <p>현재 매물은 네이버 부동산에서 복사한 단지명으로 확인하세요. 장소 검색에 등록되지 않은 아파트는 제외됩니다.</p>
           {snapshot.source && <>
             <p>경로·후보 구역 자료: <a href={snapshot.source.url} target="_blank" rel="noopener noreferrer">{snapshot.source.name}</a> · {snapshot.source.date}</p>
             <p>{snapshot.coverage}</p><p>{snapshot.source.license}</p>
