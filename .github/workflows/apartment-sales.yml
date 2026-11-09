@@ -1,0 +1,38 @@
+name: 아파트 실거래가 준비
+
+on:
+  push:
+    branches: [work]
+    paths: [config/sales-request.json]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apartment-sales
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: 국토교통부 매매 자료 준비
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 소스 가져오기
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: 실거래가 처리 검사
+        run: python3 -m unittest discover -s tests -p 'test_sales.py'
+      - name: 기존 인증키로 이용 가능 여부 확인
+        env:
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+        run: python3 scripts/prepare_sales.py --probe --output /tmp/galmanzip-sales-probe
+      - name: 검토 자료 보관
+        run: |
+          mkdir -p .sales-review
+          cp /tmp/galmanzip-sales-probe/* .sales-review/
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .sales-review
+          git commit -q -m '실거래가 연동 확인 자료 생성'
+          git push origin "HEAD:refs/heads/data/apartment-sales-${GITHUB_RUN_ID}"
