@@ -37,7 +37,7 @@ with sync_playwright() as p:
         page.get_by_role('button', name='수단·시간순 정렬', exact=True).click()
         assert page.locator('.apartment-card').evaluate_all('(cards) => cards.map(card => card.dataset.placeId)') == ['fast', 'slow', 'transfer']
         expect(page.locator('.test-cluster')).to_have_text('3')
-        assert page.evaluate('window.__searchTest.clusterOptions.minClusterSize') == 1
+        assert page.evaluate('window.__searchTest.clusterOptions.minClusterSize') == 2
         assert page.locator('.test-cluster').evaluate('(e) => getComputedStyle(e).backgroundColor') == 'rgb(0, 0, 0)'
         assert page.locator('.test-cluster').evaluate('(e) => getComputedStyle(e).color') == 'rgb(255, 255, 255)'
         assert page.evaluate('window.__searchTest.calls.some(call => call.page > 1)')

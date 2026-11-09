@@ -2,6 +2,7 @@ import { createRouter } from './routing.ts'
 import { loadNetwork } from './data.ts'
 import { createRouteGeometry } from './geometry.ts'
 import { createBusShapeLoader } from './busShapes.ts'
+import { createWalkingLoader } from './walkingLoader.ts'
 import { createSearchPlanner } from './planner.ts'
 import type { Reachability, RoutingTask } from './types.ts'
 
@@ -9,6 +10,7 @@ let ready: ReturnType<typeof loadNetwork> | undefined
 let route: ReturnType<typeof createRouter> | undefined
 let geometry: ReturnType<typeof createRouteGeometry> | undefined
 let busShapes: ReturnType<typeof createBusShapeLoader> | undefined
+let walking: ReturnType<typeof createWalkingLoader> | undefined
 let current: { key: string; result: Reachability } | undefined
 let search: { id: number; destination: Extract<RoutingTask, { kind: 'plan' }>['destination'];
   planner: ReturnType<typeof createSearchPlanner>; seen: Set<string> } | undefined
@@ -22,8 +24,13 @@ self.onmessage = async (event: MessageEvent<Request>) => {
     if (task.kind === 'geometry') {
       geometry ??= createRouteGeometry(network)
       busShapes ??= createBusShapeLoader(network, task.url)
-      const shapes = await busShapes(task.apartment)
-      self.postMessage({ id: task.id, result: geometry(task.apartment, task.destination, shapes) })
+      walking ??= createWalkingLoader(task.url)
+      const [shapes, walked] = await Promise.all([busShapes(task.apartment), walking(geometry(task.apartment, task.destination), task.apartment)])
+      const result = geometry(task.apartment, task.destination, shapes)
+      result.segments = [...result.segments.filter(segment => task.apartment.legs[segment.legIndex].mode !== 'walk'),
+        ...walked.segments.filter(segment => task.apartment.legs[segment.legIndex].mode === 'walk')].sort((a, b) => a.legIndex - b.legIndex)
+      result.walking = walked.walking
+      self.postMessage({ id: task.id, result })
       return
     }
     if (task.kind === 'plan') {

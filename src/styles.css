@@ -514,6 +514,17 @@ summary { cursor: pointer; }
 .map-zoom-controls { display: grid; gap: 4px; }
 .map-zoom-controls button { width: 36px; padding: 2px; font-size: 20px; }
 .selected-apartment-marker { display: block; max-width: 200px; overflow: hidden; border-radius: 6px; padding: 5px 10px; background: #000; color: #fff; font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
+.apartment-tooltip-anchor { width: min(260px, calc(100vw - 40px)); white-space: normal; }
+.apartment-tooltip-anchor[data-placement='above'] { transform: translateY(-48px); }
+.apartment-tooltip-anchor[data-placement='below'] { transform: translateY(12px); }
+.apartment-tooltip-anchor.apartment-tooltip-mobile { position: absolute; z-index: 6; left: 12px; bottom: 12px; width: min(300px, calc(100% - 24px)); transform: none; }
+.apartment-tooltip { position: relative; max-height: 240px; overflow: auto; border: 1px solid #cdd1d5; border-radius: 8px; padding: 14px; background: #fff; color: #464c53; box-shadow: 0 4px 8px -1px #00000029; font-size: 13px; line-height: 1.5; }
+.apartment-tooltip strong { display: block; padding-right: 24px; font-size: 15px; overflow-wrap: anywhere; }
+.apartment-tooltip p { margin: 6px 0; }
+.apartment-tooltip small { color: #6d747b; font-size: 11px; }
+.apartment-tooltip button { min-height: 32px; cursor: pointer; }
+.apartment-tooltip-close { position: absolute; top: 4px; right: 4px; width: 32px; border: 0; background: transparent; color: #464c53; font-size: 22px; }
+.apartment-tooltip-route { display: block; width: 100%; margin-top: 10px; border: 1px solid #cdd1d5; border-radius: 6px; background: #fff; color: #256ef4; }
 .route-stop-marker { display: block; width: 10px; height: 10px; border: 3px solid; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #00000029; }
 .route-terminal-marker { position: relative; display: grid; width: max-content; max-width: 190px; gap: 2px; border: 1px solid #cdd1d5; border-top: 3px solid var(--route-color); border-radius: 6px; padding: 5px 8px; background: #fff; color: #464c53; box-shadow: 0 1px 4px #0000001a; font-size: 12px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; transform: translateY(-8px); pointer-events: none; }
 .route-terminal-marker::after { content: ''; position: absolute; box-sizing: border-box; left: calc(50% - 4px); bottom: -12px; width: 8px; height: 8px; border: 2px solid var(--route-color); border-radius: 50%; background: #fff; }

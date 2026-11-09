@@ -262,14 +262,14 @@ with sync_playwright() as p:
     page.get_by_role('combobox', name='소요 시간').click()
     page.get_by_role('option', name='0~10분', exact=True).click()
     search(page)
+    context.route('**/data/walking/**', lambda route: route.fulfill(status=503, body='검증용 자료 누락'))
     page.locator('.route-gauge-button').click()
-    expect(page.get_by_text('정류장 연결 경로', exact=True)).to_be_visible()
-    assert len(active(page)) == 1 and active(page)[0]['style'] == 'shortdash'
+    expect(page.get_by_text('도보 예상 경로', exact=True)).to_be_visible()
+    expect(page.locator('.walking-path-missing')).to_be_visible()
+    assert active(page) == []
     assert active(page, full_bus=True) == []
     expect(page.get_by_text('연한 실선: 버스 전체 노선', exact=True)).to_have_count(0)
-    assert active(page)[0]['path'][0] == [37.4005, 127.16]
-    assert active(page)[0]['path'][-1] == [37.4, 127.16]
     assert not errors, errors
     context.close()
-    print('도보 전용 게이지·점선과 실제 양 끝 좌표 연결 검증 통과', flush=True)
+    print('도보 전용 게이지·자료 누락 안내·미확인 직선 생략 검증 통과', flush=True)
     browser.close()

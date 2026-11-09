@@ -57,6 +57,8 @@ export interface RouteGeometry {
   busLines: { legIndex: number; points: Point[]; terminals: { name: string; point: Point; label: string }[] }[]
   roadBusLines: string[]
   sources: BusRoadShape['source'][]
+  walking?: { matched: number[]; missing: { legIndex: number; reason: 'unavailable' | 'disconnected' | 'too-far' }[];
+    accessGaps: boolean; date: string }
 }
 export interface BusRoadShape {
   version: 1

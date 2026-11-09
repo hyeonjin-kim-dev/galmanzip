@@ -19,7 +19,9 @@ export function useRouteGeometry(selection: Selection | null, destination: Place
     setView({ selection, status: 'loading' })
     routingTask<RouteGeometry>({ kind: 'geometry', apartment, destination }, controller.signal).then(geometry => {
       if (controller.signal.aborted) return
-      cache.current.set(apartment.id, { geometry, expires: Date.now() + 2 * 3600000 })
+      if (!geometry.walking?.missing.some(leg => leg.reason === 'unavailable')) {
+        cache.current.set(apartment.id, { geometry, expires: Date.now() + 2 * 3600000 })
+      }
       if (cache.current.size > 16) cache.current.delete(cache.current.keys().next().value!)
       setView({ selection, status: 'ready', geometry })
     }).catch(error => {

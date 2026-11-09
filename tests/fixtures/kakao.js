@@ -43,7 +43,24 @@
     getSouthWest() { return new LatLng(this.south, this.west) }
     getNorthEast() { return new LatLng(this.north, this.east) }
   }
-  class Marker { constructor(options) { this.options = options; state.createdMarkers++ } setMap() {} }
+  class Size { constructor(width, height) { this.width = width; this.height = height } }
+  class Point { constructor(x, y) { this.x = x; this.y = y } }
+  class MarkerImage { constructor(src, size, options) { this.src = src; this.size = size; this.options = options } }
+  class Marker {
+    constructor(options) { this.options = options; state.createdMarkers++ }
+    setMap(map) {
+      this.element?.remove()
+      if (!map) return
+      const element = this.element = document.createElement('button')
+      element.className = 'test-apartment-marker'
+      element.title = this.options.title
+      const icon = document.createElement('img'); icon.src = this.options.image.src; icon.alt = this.options.title
+      element.append(icon)
+      Object.assign(element.style, { position: 'absolute', top: '50%', left: '50%', background: 'none', border: 'none' })
+      element.onclick = () => fire(this, 'click')
+      map.container.append(element)
+    }
+  }
   class Polyline {
     constructor(options) { this.options = options; state.polylines.push(this) }
     setMap(map) { this.map = map }
@@ -54,12 +71,16 @@
   }
   class MarkerClusterer {
     constructor(options) { this.options = options; state.clusterOptions = options; state.clusterer = this }
-    clear() { state.markers = []; this.element?.remove() }
+    clear() { state.markers.forEach(marker => marker.setMap(null)); state.markers = []; this.element?.remove() }
     addMarkers(markers, nodraw) { state.markers.push(...markers); if (!nodraw) this.redraw() }
-    removeMarkers(markers, nodraw) { state.markers = state.markers.filter(marker => !markers.includes(marker)); if (!nodraw) this.redraw() }
+    removeMarkers(markers, nodraw) { markers.forEach(marker => marker.setMap(null)); state.markers = state.markers.filter(marker => !markers.includes(marker)); if (!nodraw) this.redraw() }
     redraw() {
       this.element?.remove()
+      state.markers.forEach(marker => marker.setMap(null))
       if (!state.markers.length) return
+      if (state.markers.length < this.options.minClusterSize) {
+        state.markers.forEach(marker => marker.setMap(this.options.map)); return
+      }
       const element = this.element = document.createElement('button')
       element.className = 'test-cluster'
       element.textContent = this.options.texts(state.markers.length)
@@ -67,7 +88,10 @@
       element.onclick = () => {
         const bounds = new LatLngBounds()
         state.markers.forEach(marker => bounds.extend(marker.options.position))
-        fire(this, 'clusterclick', { getMarkers: () => state.markers, getBounds: () => bounds })
+        const points = state.markers.map(marker => marker.options.position)
+        const center = new LatLng(points.reduce((sum, p) => sum + p.lat, 0) / points.length,
+          points.reduce((sum, p) => sum + p.lng, 0) / points.length)
+        fire(this, 'clusterclick', { getMarkers: () => state.markers, getBounds: () => bounds, getCenter: () => center })
       }
       this.options.map.container.append(element)
     }
@@ -105,7 +129,7 @@
       }, state.delayFor ? state.delayFor(query, options) : state.delay)
     }
   }
-  window.kakao = { maps: { load: callback => callback(), LatLng, Map, LatLngBounds, Marker, Polyline, CustomOverlay, MarkerClusterer,
+  window.kakao = { maps: { load: callback => callback(), LatLng, Map, LatLngBounds, Size, Point, MarkerImage, Marker, Polyline, CustomOverlay, MarkerClusterer,
     event: { addListener: (target, name, callback) => { target.events ??= {}; (target.events[name] ??= []).push(callback) }, removeListener: (target, name, callback) => { target.events[name] = (target.events[name] ?? []).filter(value => value !== callback) } },
     services: { Places, Status: { OK: 'OK', ZERO_RESULT: 'ZERO_RESULT', ERROR: 'ERROR' }, SortBy: { DISTANCE: 'distance' } } } }
 })()

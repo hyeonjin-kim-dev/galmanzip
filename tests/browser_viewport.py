@@ -45,7 +45,8 @@ with sync_playwright() as p:
         assert page.evaluate('window.__searchTest.level') == 6
         assert page.locator('progress').count() == 0
         expect(page.get_by_role('button', name='중단', exact=True)).to_be_visible()
-        expect(page.locator('.test-cluster')).to_have_text('1')
+        expect(page.locator('.test-cluster')).to_have_count(0)
+        expect(page.locator('.test-apartment-marker')).to_have_count(1)
         page.locator('[data-place-id="near"] .apartment-heading').click()
         page.wait_for_function('window.__searchTest.fitCount === 1')
         assert includes_selection(page, 'near')
@@ -77,7 +78,8 @@ with sync_playwright() as p:
         expect(page.locator('.results-map-count')).to_have_text('현재 지도 안 1곳')
         assert page.locator('.apartment-card').evaluate_all('(cards) => cards.map(card => card.dataset.placeId)') == ['far', 'near']
         expect(page.locator('[data-place-id="near"] .route-details')).to_have_attribute('open', '')
-        expect(page.locator('.test-cluster')).to_have_text('1')
+        expect(page.locator('.test-cluster')).to_have_count(0)
+        expect(page.locator('.test-apartment-marker')).to_have_count(1)
         page.get_by_role('button', name='찾은 집 모두 보기', exact=True).click()
         expect(page.locator('.apartment-card')).to_have_count(2)
         assert not errors, errors

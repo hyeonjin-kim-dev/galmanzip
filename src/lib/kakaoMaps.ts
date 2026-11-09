@@ -16,7 +16,7 @@ export interface MapInstance {
 
 interface MapBounds { extend(position: MapPosition): void; getSouthWest(): MapPosition; getNorthEast(): MapPosition }
 export interface MapMarker { setMap(map: MapInstance | null): void }
-export interface MapCluster { getMarkers(): MapMarker[]; getBounds(): MapBounds }
+export interface MapCluster { getMarkers(): MapMarker[]; getBounds(): MapBounds; getCenter(): MapPosition }
 export interface PlaceData {
   id: string; place_name: string; address_name: string; road_address_name: string
   x: string; y: string; place_url: string; category_name: string
@@ -31,10 +31,13 @@ export interface MapsSdk {
     options: { center: MapPosition; level: number },
   ) => MapInstance
   LatLngBounds: new () => MapBounds
-  Marker: new (options: { position: MapPosition; title?: string }) => MapMarker
+  Size: new (width: number, height: number) => object
+  Point: new (x: number, y: number) => object
+  MarkerImage: new (src: string, size: object, options: { offset: object }) => object
+  Marker: new (options: { position: MapPosition; title?: string; image?: object }) => MapMarker
   Polyline: new (options: { path: MapPosition[]; strokeWeight: number; strokeColor: string; strokeOpacity: number;
     strokeStyle: 'solid' | 'shortdash'; zIndex: number; endArrow?: boolean }) => { setMap(map: MapInstance | null): void }
-  CustomOverlay: new (options: { position: MapPosition; content: HTMLElement; yAnchor?: number; zIndex?: number }) => {
+  CustomOverlay: new (options: { position: MapPosition; content: HTMLElement; xAnchor?: number; yAnchor?: number; zIndex?: number }) => {
     setMap(map: MapInstance | null): void
   }
   MarkerClusterer: new (options: {

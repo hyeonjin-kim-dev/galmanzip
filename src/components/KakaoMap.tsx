@@ -6,6 +6,8 @@ import { destinationLevel } from '../search/bounds'
 import type { ApartmentResult, Place } from '../search/types'
 import { routeAppearance } from '../lib/routePresentation'
 import { useRouteGeometry } from './useRouteGeometry'
+import ApartmentTooltip from './ApartmentTooltip'
+import apartmentIcon from '../assets/apartment-marker.svg'
 
 const appKey = import.meta.env.VITE_KAKAO_MAP_KEY?.trim()
 
@@ -26,13 +28,15 @@ export default memo(function KakaoMap({ results, destination, selection, allResu
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<MapStatus>(appKey ? 'loading' : 'missing-key')
   const [context, setContext] = useState<{ maps: MapsSdk; map: MapInstance } | null>(null)
+  const [popupId, setPopupId] = useState<string | null>(null)
   const clustererRef = useRef<InstanceType<MapsSdk['MarkerClusterer']> | null>(null)
-  const markerIdsRef = useRef(new Map<MapMarker, string>())
+  const markerClicksRef = useRef(new Map<MapMarker, () => void>())
   const markersRef = useRef(new Map<string, MapMarker>())
   const selectionRef = useRef(selection)
   selectionRef.current = selection
   const cancelledFocusRef = useRef<typeof selection>(null)
   const selected = allResults.find(result => result.id === selection?.id)
+  const popup = results.find(result => result.id === popupId)
   const routeView = useRouteGeometry(selection, destination, allResults, searchVersion)
   const resolvedRoute = routeView.status === 'ready' || routeView.status === 'error' ? routeView : undefined
   const geometry = routeView.status === 'ready' ? routeView.geometry : undefined
@@ -62,7 +66,7 @@ export default memo(function KakaoMap({ results, destination, selection, allResu
         let timer: number | undefined
         const changed = () => { window.clearTimeout(timer); timer = window.setTimeout(() => onViewport(readBounds(map)), 100) }
         maps.event.addListener(map, 'idle', changed)
-        const interacted = () => { cancelledFocusRef.current = selectionRef.current }
+        const interacted = () => { cancelledFocusRef.current = selectionRef.current; setPopupId(null) }
         maps.event.addListener(map, 'dragstart', interacted)
         maps.event.addListener(map, 'zoom_start', interacted)
         stopListening = () => {
@@ -99,7 +103,7 @@ export default memo(function KakaoMap({ results, destination, selection, allResu
     if (!context) return
     const { maps, map } = context
     const clusterer = new maps.MarkerClusterer({ map, gridSize: 64, averageCenter: true,
-      minLevel: 0, minClusterSize: 1, disableClickZoom: true, texts: size => String(size),
+      minLevel: 0, minClusterSize: 2, disableClickZoom: true, texts: size => String(size),
       calculator: [Number.MAX_SAFE_INTEGER],
       styles: [{ width: '44px', height: '44px', background: '#000000', color: '#ffffff',
         borderRadius: '50%', textAlign: 'center', lineHeight: '44px', fontSize: '16px',
@@ -107,21 +111,24 @@ export default memo(function KakaoMap({ results, destination, selection, allResu
     clustererRef.current = clusterer
     const click = (cluster: MapCluster) => {
       cancelledFocusRef.current = selectionRef.current
-      const markers = cluster.getMarkers()
-      if (markers.length === 1) {
-        const id = markerIdsRef.current.get(markers[0])
-        if (id) onSelect(id)
-      } else map.setBounds(cluster.getBounds(), 80, 40, 40, 40)
+      setPopupId(null)
+      if (cluster.getMarkers().length < 2) return
+      const center = cluster.getCenter()
+      map.setLevel(Math.max(1, map.getLevel() - 1))
+      map.setCenter(center)
     }
     maps.event.addListener(clusterer, 'clusterclick', click)
     return () => {
       maps.event.removeListener(clusterer, 'clusterclick', click)
       clusterer.clear()
       clustererRef.current = null
-      markerIdsRef.current.clear()
+      for (const [marker, listener] of markerClicksRef.current) maps.event.removeListener(marker, 'click', listener)
+      markerClicksRef.current.clear()
       markersRef.current.clear()
     }
-  }, [context, onSelect])
+  }, [context])
+
+  useEffect(() => { setPopupId(null) }, [destination, selection, searchVersion])
 
   useEffect(() => {
     if (!context || !destination) return
@@ -139,21 +146,26 @@ export default memo(function KakaoMap({ results, destination, selection, allResu
   useEffect(() => {
     const clusterer = clustererRef.current
     if (!context || !clusterer) return
-    const { maps, map } = context
+    const { maps } = context
     const ids = new Set(results.map(result => result.id))
     const removed: MapMarker[] = []
     for (const [id, marker] of markersRef.current) if (!ids.has(id)) {
       removed.push(marker)
       markersRef.current.delete(id)
-      markerIdsRef.current.delete(marker)
+      const listener = markerClicksRef.current.get(marker)
+      if (listener) maps.event.removeListener(marker, 'click', listener)
+      markerClicksRef.current.delete(marker)
     }
     if (removed.length) clusterer.removeMarkers(removed, true)
     const added: MapMarker[] = []
+    const icon = new maps.MarkerImage(apartmentIcon, new maps.Size(36, 44), { offset: new maps.Point(18, 44) })
     for (const result of results) {
       if (markersRef.current.has(result.id)) continue
       const position = new maps.LatLng(result.lat, result.lng)
-      const marker = new maps.Marker({ position, title: result.name })
-      markerIdsRef.current.set(marker, result.id)
+      const marker = new maps.Marker({ position, title: result.name, image: icon })
+      const click = () => { cancelledFocusRef.current = selectionRef.current; setPopupId(result.id) }
+      maps.event.addListener(marker, 'click', click)
+      markerClicksRef.current.set(marker, click)
       markersRef.current.set(result.id, marker)
       added.push(marker)
     }
@@ -163,6 +175,7 @@ export default memo(function KakaoMap({ results, destination, selection, allResu
 
   const focusDestination = () => {
     if (!context || !destination) return
+    setPopupId(null)
     cancelledFocusRef.current = selectionRef.current
     context.map.setLevel(destinationLevel(maxMinutes))
     context.map.setCenter(new context.maps.LatLng(destination.lat, destination.lng))
@@ -262,6 +275,7 @@ export default memo(function KakaoMap({ results, destination, selection, allResu
 
   const showAll = () => {
     if (!context || !allResults.length) return
+    setPopupId(null)
     cancelledFocusRef.current = selectionRef.current
     const bounds = new context.maps.LatLngBounds()
     for (const result of allResults) bounds.extend(new context.maps.LatLng(result.lat, result.lng))
@@ -271,6 +285,7 @@ export default memo(function KakaoMap({ results, destination, selection, allResu
 
   const changeLevel = (difference: number) => {
     if (!context) return
+    setPopupId(null)
     cancelledFocusRef.current = selectionRef.current
     context.map.setLevel(Math.max(1, Math.min(14, context.map.getLevel() + difference)))
   }
@@ -285,22 +300,41 @@ export default memo(function KakaoMap({ results, destination, selection, allResu
         aria-label="서울·경기도 지도"
         aria-busy={status === 'loading'}
       />
-      {status === 'ready' && selected && <aside className="map-route-info" aria-label="선택한 예상 경로">
+      {context && popup && containerRef.current && <ApartmentTooltip context={context} container={containerRef.current}
+        apartment={popup} onClose={() => setPopupId(null)} onSelect={onSelect} />}
+      {status === 'ready' && selected && !popup && <aside className="map-route-info" aria-label="선택한 예상 경로">
         <strong title={`${selected.name} → 목적지`}>{selected.name} → 목적지</strong>
         {routeView.status === 'error' ? <>
           <p role="alert">{routeView.message}</p>
           <button type="button" onClick={() => onSelect(selected.id)}>경로 다시 표시</button>
         </> : <>
-          <p role="status">{routeView.status === 'loading' ? '경로를 표시하고 있어요.' : geometry?.roadBusLines.length ? '버스 도로 경로' : '정류장 연결 경로'}</p>
+          <p role="status">{routeView.status === 'loading' ? '경로를 표시하고 있어요.' : geometry?.roadBusLines.length ? '버스 도로 경로'
+            : selected.legs.some(leg => leg.mode !== 'walk') ? '정류장 연결 경로' : '도보 예상 경로'}</p>
           <div className="map-route-legend">
             <span className="map-route-walk">점선: 도보</span><span>진한 실선: 탑승 구간</span>
             {!!geometry?.busLines.length && <span className="map-route-context">연한 실선: 버스 전체 노선</span>}
           </div>
           <small>{geometry?.roadBusLines.length
             ? selected.legs.some(leg => leg.mode === 'bus' && !geometry.roadBusLines.includes(leg.lineId!))
-              ? '일부 버스는 정류장 연결선이에요. 도보·지하철도 실제 경로와 다를 수 있어요.'
-              : '도보·지하철은 실제 경로와 다를 수 있어요.'
-            : '실제 도로·보행 경로와 다를 수 있어요.'}</small>
+              ? '일부 버스·지하철은 정류장 연결선이에요.'
+              : selected.legs.some(leg => leg.mode === 'rail') ? '지하철은 정류장 연결선이에요.' : ''
+            : selected.legs.some(leg => leg.mode !== 'walk') ? '버스·지하철은 정류장 연결선이에요.' : ''}</small>
+          {!!geometry?.walking?.matched.length && <small className="walking-path-info">
+            도보는 보행 가능한 길을 따라 표시해요.
+            {geometry.walking.accessGaps && ' 출입구·정류장까지의 연결은 미확인이에요.'}
+          </small>}
+          {!!geometry?.walking?.missing.length && <small className="walking-path-missing">
+            도보 {geometry.walking.missing.length}구간은 5분 이내 보행로를 확인하지 못해 생략했어요.
+            {geometry.walking.missing.some(leg => leg.reason === 'unavailable')
+              && <button type="button" onClick={() => onSelect(selected.id)}>도보 경로 다시 확인</button>}
+          </small>}
+          {geometry?.walking && (geometry.walking.matched.length > 0 || geometry.walking.missing.length > 0)
+            && <small>목록의 도보 시간은 거리 추정치이며 실제 이동 시간과 다를 수 있어요.</small>}
+          {!!geometry?.walking?.matched.length && <small>
+            도보: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap 기여자</a>
+            {' · '}{geometry.walking.date}{' · '}
+            <a href={`${import.meta.env.BASE_URL}data/walking/LICENSE.txt`} target="_blank" rel="noopener noreferrer">ODbL</a>
+          </small>}
           {geometry?.sources.map(source => <small key={`${source.url}:${source.date}`}>
             버스 경로: <a href={source.url} target="_blank" rel="noopener noreferrer">{source.name}</a> · {source.date}
           </small>)}
