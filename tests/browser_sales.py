@@ -2,6 +2,7 @@
 import gzip
 import json
 import time
+from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 from browser_support import BASE, choose, includes_selection, prepare
 
@@ -103,4 +104,35 @@ with sync_playwright() as p:
     assert not errors, errors
     context.close()
     print('가격 요청 실패·명시적 재시도·가격 도착 후 기존 목록/상세 위치 유지 검증 통과', flush=True)
+
+    # 가격은 실제 배포 자료를 사용하고 지도·장소 SDK만 대역으로 분리한다.
+    root = Path(__file__).resolve().parents[1] / 'public/data/sales'
+    index = json.loads((root / 'index.json').read_text())
+    district = next(item for item in index['districts'] if item['code'] == '41135')
+    records = json.loads(gzip.decompress((root / district['asset']).read_bytes()))['apartments']
+    apartment = next(item for item in records if item['id'] == '41135-103')
+    def amount(value):
+        large, small = divmod(value, 10000)
+        return (' '.join(filter(None, [f'{large:,}억' if large else '', f'{small:,}만' if small else ''])) + ' 원')
+    prices = [row[0] for row in apartment['transactions']]
+    expected = amount(min(prices)) if min(prices) == max(prices) else f'{amount(min(prices))} ~ {amount(max(prices))}'
+    context, page, errors = prepare(browser)
+    choose(page)
+    page.evaluate('''apartment => { const state=window.__searchTest;
+      state.homes=[{...state.homes[2], place_name:apartment.names[0]+'아파트',
+        road_address_name:apartment.roadAddresses[0].replace('경기도 ', '경기 '),
+        address_name:apartment.lotAddresses[0].replace('경기도 ', '경기 ')}];
+    }''', apartment)
+    page.get_by_role('button', name='검색', exact=True).click()
+    expect(page.get_by_text('검색을 완료했습니다.', exact=True)).to_be_visible(timeout=20000)
+    page.get_by_role('button', name='찾은 집 모두 보기', exact=True).click()
+    page.locator('.apartment-sale').scroll_into_view_if_needed()
+    expect(page.locator('.apartment-sale')).to_have_attribute('data-status', 'matched')
+    expect(page.locator('.apartment-sale-main strong')).to_have_text(expected)
+    expect(page.locator('.apartment-sale-meta')).to_contain_text(apartment['date'].replace('-', '.')+' 계약')
+    expect(page.locator('.apartment-sale-source')).to_contain_text(index['collectedOn'].replace('-', '.')+' 수집')
+    assert not errors, errors
+    page.locator('.apartment-card').screenshot(path='/tmp/galmanzip-sales-actual.png')
+    context.close()
+    print(f'실제 국토부 정적 자료·지도 SDK 대역: {apartment["names"][0]} {expected} · 계약일/수집일 표시 검증 통과', flush=True)
     browser.close()
