@@ -1,8 +1,12 @@
 """국토교통부 공개 매매 자료를 인증키 노출 없이 준비한다."""
 import argparse
+import csv
+import hashlib
+import io
 import json
 import os
 import re
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -14,6 +18,7 @@ from zoneinfo import ZoneInfo
 SOURCE = 'https://www.data.go.kr/data/15126468/openapi.do'
 ENDPOINT = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev'
 CODE_SOURCE = 'https://www.code.go.kr/stdcode/regCodeL.do?menuNo=101010100010'
+CODE_DOWNLOAD = 'https://www.code.go.kr/etc/codeFullDown.do'
 
 
 class DataError(Exception):
@@ -74,6 +79,35 @@ def fetch_page(key, district, month, page=1, size=1000):
     return parse_page(payload)
 
 
+def download_codes(output):
+    request = Request(CODE_DOWNLOAD, data=urlencode({'codeseId': '법정동코드'}).encode(),
+                      headers={'User-Agent': 'Mozilla/5.0', 'Referer': CODE_SOURCE})
+    try:
+        with build_opener().open(request, timeout=60) as response:
+            payload = response.read(16 * 1024 * 1024)
+        if payload.startswith(b'PK'):
+            with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                files = [info for info in archive.infolist() if info.filename.lower().endswith('.txt')]
+                if len(files) != 1 or files[0].file_size > 16 * 1024 * 1024:
+                    raise DataError('법정동 전체 파일 구성을 확인하지 못했습니다.')
+                source = archive.read(files[0])
+        else:
+            source = payload
+        try:
+            text = source.decode('utf-8-sig')
+        except UnicodeDecodeError:
+            text = source.decode('cp949')
+        rows = list(csv.DictReader(io.StringIO(text), delimiter='\t'))
+        if not rows or not {'법정동코드', '법정동명', '폐지여부'} <= rows[0].keys():
+            raise DataError('법정동 코드 파일 형식이 올바르지 않습니다.')
+        selected = [row for row in rows if row['법정동코드'][:2] in ('11', '41')]
+        (output / 'legal-codes.json').write_text(json.dumps({'source': CODE_SOURCE,
+            'sha256': hashlib.sha256(payload).hexdigest(), 'rows': selected}, ensure_ascii=False, indent=2) + '\n')
+        return len(selected)
+    except (HTTPError, URLError, TimeoutError, OSError, zipfile.BadZipFile, UnicodeDecodeError):
+        raise DataError('공식 법정동 코드 파일을 내려받지 못했습니다.') from None
+
+
 def probe(output, key):
     output.mkdir(parents=True, exist_ok=True)
     report = {'checkedAt': datetime.now(ZoneInfo('Asia/Seoul')).isoformat(), 'source': SOURCE}
@@ -84,11 +118,9 @@ def probe(output, key):
     except DataError as error:
         report.update(status='unavailable', message=str(error))
     try:
-        with build_opener().open(Request(CODE_SOURCE, headers={'User-Agent': 'Mozilla/5.0'}), timeout=30) as response:
-            (output / 'code-page.html').write_bytes(response.read(4 * 1024 * 1024))
-        report['codePage'] = 'ready'
-    except (HTTPError, URLError, TimeoutError, OSError):
-        report['codePage'] = 'unavailable'
+        report['legalCodeRows'] = download_codes(output)
+    except DataError as error:
+        report['legalCodeError'] = str(error)
     (output / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps(report, ensure_ascii=False), flush=True)
 
