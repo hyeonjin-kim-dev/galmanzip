@@ -1,6 +1,6 @@
 {
-  "apiRequests": 1005,
-  "collectedOn": "2026-11-10",
+  "apiRequests": 1001,
+  "collectedOn": "2026-11-11",
   "months": [
     "202512",
     "202601",
@@ -21,177 +21,177 @@
     {
       "code": "11110",
       "name": "서울특별시 종로구",
-      "asset": "sales-11110-e381484eb86d.json.gz",
+      "asset": "sales-11110-af648a23d7fc.json.gz",
       "apartments": 87,
-      "records": 526,
+      "records": 532,
       "cancelled": 17
     },
     {
       "code": "11140",
       "name": "서울특별시 중구",
-      "asset": "sales-11140-9ed5368e1840.json.gz",
+      "asset": "sales-11140-4dbc0e9597ef.json.gz",
       "apartments": 89,
       "records": 845,
-      "cancelled": 52
+      "cancelled": 53
     },
     {
       "code": "11170",
       "name": "서울특별시 용산구",
-      "asset": "sales-11170-0a6156d75e7c.json.gz",
-      "apartments": 152,
-      "records": 904,
-      "cancelled": 37
+      "asset": "sales-11170-adb6eb9fb63a.json.gz",
+      "apartments": 151,
+      "records": 906,
+      "cancelled": 38
     },
     {
       "code": "11200",
       "name": "서울특별시 성동구",
-      "asset": "sales-11200-0f0fe0e0dfb4.json.gz",
+      "asset": "sales-11200-277acc516e3a.json.gz",
       "apartments": 143,
-      "records": 1450,
+      "records": 1451,
       "cancelled": 56
     },
     {
       "code": "11215",
       "name": "서울특별시 광진구",
-      "asset": "sales-11215-d7bd8e027c43.json.gz",
-      "apartments": 167,
-      "records": 923,
+      "asset": "sales-11215-08ea04852e34.json.gz",
+      "apartments": 168,
+      "records": 925,
       "cancelled": 43
     },
     {
       "code": "11230",
       "name": "서울특별시 동대문구",
-      "asset": "sales-11230-4cb595edb208.json.gz",
+      "asset": "sales-11230-57f79b9ca583.json.gz",
       "apartments": 246,
-      "records": 3010,
-      "cancelled": 101
+      "records": 3019,
+      "cancelled": 102
     },
     {
       "code": "11260",
       "name": "서울특별시 중랑구",
-      "asset": "sales-11260-2cf02850cabd.json.gz",
+      "asset": "sales-11260-480eeb7797b5.json.gz",
       "apartments": 203,
-      "records": 2725,
-      "cancelled": 76
+      "records": 2746,
+      "cancelled": 77
     },
     {
       "code": "11290",
       "name": "서울특별시 성북구",
-      "asset": "sales-11290-1f8a7a4eaea0.json.gz",
+      "asset": "sales-11290-e7db698087dd.json.gz",
       "apartments": 165,
-      "records": 3649,
+      "records": 3661,
       "cancelled": 90
     },
     {
       "code": "11305",
       "name": "서울특별시 강북구",
-      "asset": "sales-11305-dd35a8066a9f.json.gz",
+      "asset": "sales-11305-6ff75b28d9b1.json.gz",
       "apartments": 91,
-      "records": 1443,
+      "records": 1455,
       "cancelled": 17
     },
     {
       "code": "11320",
       "name": "서울특별시 도봉구",
-      "asset": "sales-11320-b685aec91f29.json.gz",
+      "asset": "sales-11320-8d3f990a7ec3.json.gz",
       "apartments": 159,
-      "records": 2762,
+      "records": 2769,
       "cancelled": 66
     },
     {
       "code": "11350",
       "name": "서울특별시 노원구",
-      "asset": "sales-11350-f0615312e0be.json.gz",
+      "asset": "sales-11350-90226b0234e1.json.gz",
       "apartments": 276,
-      "records": 7331,
-      "cancelled": 164
+      "records": 7361,
+      "cancelled": 166
     },
     {
       "code": "11380",
       "name": "서울특별시 은평구",
-      "asset": "sales-11380-8d03a16db949.json.gz",
+      "asset": "sales-11380-f4063b1dfe4f.json.gz",
       "apartments": 327,
-      "records": 3099,
-      "cancelled": 99
+      "records": 3107,
+      "cancelled": 100
     },
     {
       "code": "11410",
       "name": "서울특별시 서대문구",
-      "asset": "sales-11410-f91d736e43d0.json.gz",
+      "asset": "sales-11410-e86f9ffc1307.json.gz",
       "apartments": 196,
-      "records": 2461,
+      "records": 2464,
       "cancelled": 72
     },
     {
       "code": "11440",
       "name": "서울특별시 마포구",
-      "asset": "sales-11440-df288bd181c1.json.gz",
+      "asset": "sales-11440-3036b8f204a6.json.gz",
       "apartments": 242,
-      "records": 1745,
+      "records": 1746,
       "cancelled": 81
     },
     {
       "code": "11470",
       "name": "서울특별시 양천구",
-      "asset": "sales-11470-5dfb107698f5.json.gz",
+      "asset": "sales-11470-90460183f992.json.gz",
       "apartments": 313,
-      "records": 2303,
+      "records": 2308,
       "cancelled": 79
     },
     {
       "code": "11500",
       "name": "서울특별시 강서구",
-      "asset": "sales-11500-57d1f796942b.json.gz",
-      "apartments": 439,
-      "records": 4232,
-      "cancelled": 137
+      "asset": "sales-11500-6a752b28b45a.json.gz",
+      "apartments": 441,
+      "records": 4258,
+      "cancelled": 139
     },
     {
       "code": "11530",
       "name": "서울특별시 구로구",
-      "asset": "sales-11530-5301cc5b541d.json.gz",
+      "asset": "sales-11530-3cff54711e50.json.gz",
       "apartments": 297,
-      "records": 3802,
+      "records": 3815,
       "cancelled": 67
     },
     {
       "code": "11545",
       "name": "서울특별시 금천구",
-      "asset": "sales-11545-645dae30dc9c.json.gz",
-      "apartments": 96,
-      "records": 1276,
+      "asset": "sales-11545-1a1c1eee1b8e.json.gz",
+      "apartments": 97,
+      "records": 1285,
       "cancelled": 37
     },
     {
       "code": "11560",
       "name": "서울특별시 영등포구",
-      "asset": "sales-11560-95ef2e7dca2c.json.gz",
+      "asset": "sales-11560-70439f5c07fe.json.gz",
       "apartments": 236,
-      "records": 2764,
+      "records": 2769,
       "cancelled": 79
     },
     {
       "code": "11590",
       "name": "서울특별시 동작구",
-      "asset": "sales-11590-9a66105df9c2.json.gz",
+      "asset": "sales-11590-f5d2815b1939.json.gz",
       "apartments": 181,
-      "records": 2102,
-      "cancelled": 52
+      "records": 2109,
+      "cancelled": 53
     },
     {
       "code": "11620",
       "name": "서울특별시 관악구",
-      "asset": "sales-11620-a1d57b5de075.json.gz",
+      "asset": "sales-11620-82843610d25c.json.gz",
       "apartments": 203,
-      "records": 2273,
-      "cancelled": 88
+      "records": 2282,
+      "cancelled": 89
     },
     {
       "code": "11650",
       "name": "서울특별시 서초구",
-      "asset": "sales-11650-ad6c7484774a.json.gz",
-      "apartments": 397,
-      "records": 1957,
+      "asset": "sales-11650-508bb15dd06f.json.gz",
+      "apartments": 398,
+      "records": 1961,
       "cancelled": 67
     },
     {
@@ -205,18 +205,18 @@
     {
       "code": "11710",
       "name": "서울특별시 송파구",
-      "asset": "sales-11710-0b91a42a06f4.json.gz",
+      "asset": "sales-11710-eb5f8ced71f4.json.gz",
       "apartments": 325,
-      "records": 3778,
+      "records": 3801,
       "cancelled": 107
     },
     {
       "code": "11740",
       "name": "서울특별시 강동구",
-      "asset": "sales-11740-2d3856d16a9c.json.gz",
-      "apartments": 383,
-      "records": 3046,
-      "cancelled": 92
+      "asset": "sales-11740-888f1b702b95.json.gz",
+      "apartments": 385,
+      "records": 3061,
+      "cancelled": 93
     },
     {
       "code": "41110",
@@ -229,33 +229,33 @@
     {
       "code": "41111",
       "name": "경기도 수원시 장안구",
-      "asset": "sales-41111-1e848941c4f1.json.gz",
+      "asset": "sales-41111-668f17371d49.json.gz",
       "apartments": 137,
-      "records": 2872,
+      "records": 2894,
       "cancelled": 40
     },
     {
       "code": "41113",
       "name": "경기도 수원시 권선구",
-      "asset": "sales-41113-7cfffb0fd0bb.json.gz",
+      "asset": "sales-41113-5cece95b84fa.json.gz",
       "apartments": 178,
-      "records": 5568,
-      "cancelled": 273
+      "records": 5590,
+      "cancelled": 275
     },
     {
       "code": "41115",
       "name": "경기도 수원시 팔달구",
-      "asset": "sales-41115-12ed795ecabf.json.gz",
-      "apartments": 105,
-      "records": 2575,
+      "asset": "sales-41115-f532e8300616.json.gz",
+      "apartments": 106,
+      "records": 2588,
       "cancelled": 68
     },
     {
       "code": "41117",
       "name": "경기도 수원시 영통구",
-      "asset": "sales-41117-8dc633924765.json.gz",
+      "asset": "sales-41117-6164e7468c07.json.gz",
       "apartments": 143,
-      "records": 6152,
+      "records": 6171,
       "cancelled": 134
     },
     {
@@ -269,33 +269,33 @@
     {
       "code": "41131",
       "name": "경기도 성남시 수정구",
-      "asset": "sales-41131-b7ab1088c6ed.json.gz",
+      "asset": "sales-41131-7323e93585ef.json.gz",
       "apartments": 85,
-      "records": 1384,
+      "records": 1390,
       "cancelled": 38
     },
     {
       "code": "41133",
       "name": "경기도 성남시 중원구",
-      "asset": "sales-41133-244e45f3b362.json.gz",
+      "asset": "sales-41133-596ea565fce9.json.gz",
       "apartments": 88,
-      "records": 1620,
-      "cancelled": 33
+      "records": 1631,
+      "cancelled": 34
     },
     {
       "code": "41135",
       "name": "경기도 성남시 분당구",
-      "asset": "sales-41135-90d3128c5ee6.json.gz",
+      "asset": "sales-41135-dfb9874a134c.json.gz",
       "apartments": 192,
-      "records": 3725,
+      "records": 3744,
       "cancelled": 96
     },
     {
       "code": "41150",
       "name": "경기도 의정부시",
-      "asset": "sales-41150-4f46e80d6279.json.gz",
+      "asset": "sales-41150-98bf2d34faf7.json.gz",
       "apartments": 280,
-      "records": 5360,
+      "records": 5378,
       "cancelled": 217
     },
     {
@@ -309,17 +309,17 @@
     {
       "code": "41171",
       "name": "경기도 안양시 만안구",
-      "asset": "sales-41171-3c64efab6629.json.gz",
-      "apartments": 171,
-      "records": 3039,
+      "asset": "sales-41171-8a2b093c8f34.json.gz",
+      "apartments": 172,
+      "records": 3047,
       "cancelled": 142
     },
     {
       "code": "41173",
       "name": "경기도 안양시 동안구",
-      "asset": "sales-41173-2c2c5957569a.json.gz",
+      "asset": "sales-41173-515a7e31f4c2.json.gz",
       "apartments": 187,
-      "records": 5232,
+      "records": 5243,
       "cancelled": 161
     },
     {
@@ -333,49 +333,49 @@
     {
       "code": "41192",
       "name": "경기도 부천시 원미구",
-      "asset": "sales-41192-c286e4eb91ae.json.gz",
+      "asset": "sales-41192-415cd44446d7.json.gz",
       "apartments": 286,
-      "records": 4663,
-      "cancelled": 171
+      "records": 4685,
+      "cancelled": 170
     },
     {
       "code": "41194",
       "name": "경기도 부천시 소사구",
-      "asset": "sales-41194-249f42fd2c10.json.gz",
+      "asset": "sales-41194-2b1d9ea77464.json.gz",
       "apartments": 196,
-      "records": 2461,
+      "records": 2473,
       "cancelled": 93
     },
     {
       "code": "41196",
       "name": "경기도 부천시 오정구",
-      "asset": "sales-41196-130280400735.json.gz",
+      "asset": "sales-41196-84ff27aee5ee.json.gz",
       "apartments": 161,
-      "records": 606,
+      "records": 608,
       "cancelled": 20
     },
     {
       "code": "41210",
       "name": "경기도 광명시",
-      "asset": "sales-41210-8fdae90b20f3.json.gz",
+      "asset": "sales-41210-e7f4e233f1ef.json.gz",
       "apartments": 101,
-      "records": 3181,
+      "records": 3186,
       "cancelled": 77
     },
     {
       "code": "41220",
       "name": "경기도 평택시",
-      "asset": "sales-41220-f05ab8c649fb.json.gz",
+      "asset": "sales-41220-be8a6be7a2cd.json.gz",
       "apartments": 328,
-      "records": 7617,
+      "records": 7630,
       "cancelled": 374
     },
     {
       "code": "41250",
       "name": "경기도 동두천시",
-      "asset": "sales-41250-a1bf06ddc088.json.gz",
+      "asset": "sales-41250-a4b5813f033c.json.gz",
       "apartments": 68,
-      "records": 885,
+      "records": 888,
       "cancelled": 37
     },
     {
@@ -389,18 +389,18 @@
     {
       "code": "41271",
       "name": "경기도 안산시 상록구",
-      "asset": "sales-41271-259ddaed2181.json.gz",
+      "asset": "sales-41271-2ade62212a44.json.gz",
       "apartments": 73,
-      "records": 1742,
+      "records": 1748,
       "cancelled": 76
     },
     {
       "code": "41273",
       "name": "경기도 안산시 단원구",
-      "asset": "sales-41273-89dc3e09c3db.json.gz",
+      "asset": "sales-41273-383ec9f67c35.json.gz",
       "apartments": 75,
-      "records": 2744,
-      "cancelled": 140
+      "records": 2754,
+      "cancelled": 141
     },
     {
       "code": "41280",
@@ -413,25 +413,25 @@
     {
       "code": "41281",
       "name": "경기도 고양시 덕양구",
-      "asset": "sales-41281-77b0ab1590e8.json.gz",
+      "asset": "sales-41281-2f18a321d949.json.gz",
       "apartments": 214,
-      "records": 5231,
-      "cancelled": 228
+      "records": 5259,
+      "cancelled": 230
     },
     {
       "code": "41285",
       "name": "경기도 고양시 일산동구",
-      "asset": "sales-41285-82929e492002.json.gz",
+      "asset": "sales-41285-64e7f7aa347a.json.gz",
       "apartments": 103,
-      "records": 2126,
+      "records": 2136,
       "cancelled": 105
     },
     {
       "code": "41287",
       "name": "경기도 고양시 일산서구",
-      "asset": "sales-41287-e5290503f5cd.json.gz",
+      "asset": "sales-41287-324cd393042a.json.gz",
       "apartments": 164,
-      "records": 2972,
+      "records": 2981,
       "cancelled": 113
     },
     {
@@ -445,57 +445,57 @@
     {
       "code": "41310",
       "name": "경기도 구리시",
-      "asset": "sales-41310-68ceba0afc92.json.gz",
+      "asset": "sales-41310-7e95d7f96e95.json.gz",
       "apartments": 155,
-      "records": 3311,
+      "records": 3313,
       "cancelled": 163
     },
     {
       "code": "41360",
       "name": "경기도 남양주시",
-      "asset": "sales-41360-ca7468dc200a.json.gz",
+      "asset": "sales-41360-138ccb062934.json.gz",
       "apartments": 343,
-      "records": 9449,
+      "records": 9475,
       "cancelled": 511
     },
     {
       "code": "41370",
       "name": "경기도 오산시",
-      "asset": "sales-41370-5d46f8f3ec0c.json.gz",
+      "asset": "sales-41370-61e84f0a5a96.json.gz",
       "apartments": 112,
-      "records": 3445,
+      "records": 3458,
       "cancelled": 124
     },
     {
       "code": "41390",
       "name": "경기도 시흥시",
-      "asset": "sales-41390-013b5434f27b.json.gz",
+      "asset": "sales-41390-14a4673206e2.json.gz",
       "apartments": 293,
-      "records": 5824,
+      "records": 5851,
       "cancelled": 215
     },
     {
       "code": "41410",
       "name": "경기도 군포시",
-      "asset": "sales-41410-bd5567ec5570.json.gz",
+      "asset": "sales-41410-70c228e3d02d.json.gz",
       "apartments": 179,
-      "records": 4662,
-      "cancelled": 132
+      "records": 4710,
+      "cancelled": 134
     },
     {
       "code": "41430",
       "name": "경기도 의왕시",
-      "asset": "sales-41430-8b8401e3f06b.json.gz",
+      "asset": "sales-41430-ea47a90ea098.json.gz",
       "apartments": 90,
-      "records": 2043,
+      "records": 2048,
       "cancelled": 43
     },
     {
       "code": "41450",
       "name": "경기도 하남시",
-      "asset": "sales-41450-28d84bbff86f.json.gz",
+      "asset": "sales-41450-8a7ece684588.json.gz",
       "apartments": 116,
-      "records": 3089,
+      "records": 3108,
       "cancelled": 71
     },
     {
@@ -509,57 +509,57 @@
     {
       "code": "41461",
       "name": "경기도 용인시 처인구",
-      "asset": "sales-41461-122612ccbaf0.json.gz",
-      "apartments": 137,
-      "records": 2646,
-      "cancelled": 130
+      "asset": "sales-41461-e58d17701aeb.json.gz",
+      "apartments": 138,
+      "records": 2665,
+      "cancelled": 131
     },
     {
       "code": "41463",
       "name": "경기도 용인시 기흥구",
-      "asset": "sales-41463-90ec24666e0c.json.gz",
+      "asset": "sales-41463-854cc607d7e9.json.gz",
       "apartments": 225,
-      "records": 7093,
-      "cancelled": 299
+      "records": 7121,
+      "cancelled": 300
     },
     {
       "code": "41465",
       "name": "경기도 용인시 수지구",
-      "asset": "sales-41465-76aa29203d64.json.gz",
-      "apartments": 238,
-      "records": 6091,
-      "cancelled": 150
+      "asset": "sales-41465-5009dacaa56b.json.gz",
+      "apartments": 239,
+      "records": 6123,
+      "cancelled": 152
     },
     {
       "code": "41480",
       "name": "경기도 파주시",
-      "asset": "sales-41480-a7a8e95541eb.json.gz",
+      "asset": "sales-41480-6e5160419b80.json.gz",
       "apartments": 178,
-      "records": 4317,
-      "cancelled": 170
+      "records": 4332,
+      "cancelled": 173
     },
     {
       "code": "41500",
       "name": "경기도 이천시",
-      "asset": "sales-41500-0605853460d3.json.gz",
+      "asset": "sales-41500-35e95357caab.json.gz",
       "apartments": 149,
-      "records": 1820,
+      "records": 1831,
       "cancelled": 72
     },
     {
       "code": "41550",
       "name": "경기도 안성시",
-      "asset": "sales-41550-66abb2931638.json.gz",
+      "asset": "sales-41550-e2dce162754a.json.gz",
       "apartments": 85,
-      "records": 2042,
+      "records": 2045,
       "cancelled": 69
     },
     {
       "code": "41570",
       "name": "경기도 김포시",
-      "asset": "sales-41570-096970eafcbd.json.gz",
+      "asset": "sales-41570-db8beecbca7a.json.gz",
       "apartments": 173,
-      "records": 4638,
+      "records": 4653,
       "cancelled": 172
     },
     {
@@ -573,57 +573,57 @@
     {
       "code": "41591",
       "name": "경기도 화성시 만세구",
-      "asset": "sales-41591-b4d48b0d8e66.json.gz",
+      "asset": "sales-41591-d504fd910b10.json.gz",
       "apartments": 79,
-      "records": 1282,
+      "records": 1285,
       "cancelled": 57
     },
     {
       "code": "41593",
       "name": "경기도 화성시 효행구",
-      "asset": "sales-41593-d767e46d683b.json.gz",
+      "asset": "sales-41593-3dad8e037d4d.json.gz",
       "apartments": 64,
-      "records": 1877,
-      "cancelled": 86
+      "records": 1884,
+      "cancelled": 87
     },
     {
       "code": "41595",
       "name": "경기도 화성시 병점구",
-      "asset": "sales-41595-6f4034bf5830.json.gz",
+      "asset": "sales-41595-63b24e230aea.json.gz",
       "apartments": 74,
-      "records": 3495,
-      "cancelled": 149
+      "records": 3510,
+      "cancelled": 151
     },
     {
       "code": "41597",
       "name": "경기도 화성시 동탄구",
-      "asset": "sales-41597-56c850d0038b.json.gz",
+      "asset": "sales-41597-5873c6680b45.json.gz",
       "apartments": 143,
-      "records": 8976,
+      "records": 9010,
       "cancelled": 537
     },
     {
       "code": "41610",
       "name": "경기도 광주시",
-      "asset": "sales-41610-99095b3ef595.json.gz",
+      "asset": "sales-41610-2189a3bac267.json.gz",
       "apartments": 144,
-      "records": 3412,
+      "records": 3423,
       "cancelled": 145
     },
     {
       "code": "41630",
       "name": "경기도 양주시",
-      "asset": "sales-41630-f6f9d6a477d3.json.gz",
+      "asset": "sales-41630-20dc6c3caed3.json.gz",
       "apartments": 126,
-      "records": 2962,
-      "cancelled": 144
+      "records": 2977,
+      "cancelled": 145
     },
     {
       "code": "41650",
       "name": "경기도 포천시",
-      "asset": "sales-41650-0746a77f8775.json.gz",
+      "asset": "sales-41650-91ebb7befc8c.json.gz",
       "apartments": 51,
-      "records": 720,
+      "records": 722,
       "cancelled": 23
     },
     {
@@ -637,17 +637,17 @@
     {
       "code": "41800",
       "name": "경기도 연천군",
-      "asset": "sales-41800-29c019792a5f.json.gz",
+      "asset": "sales-41800-d701b7e0e2e3.json.gz",
       "apartments": 24,
-      "records": 154,
+      "records": 155,
       "cancelled": 6
     },
     {
       "code": "41820",
       "name": "경기도 가평군",
-      "asset": "sales-41820-77b5fd0da8d3.json.gz",
+      "asset": "sales-41820-35c6413a8285.json.gz",
       "apartments": 40,
-      "records": 249,
+      "records": 250,
       "cancelled": 10
     },
     {
@@ -655,7 +655,7 @@
       "name": "경기도 양평군",
       "asset": "sales-41830-0bcc052c7572.json.gz",
       "apartments": 52,
-      "records": 577,
+      "records": 578,
       "cancelled": 32
     }
   ]
