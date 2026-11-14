@@ -1,7 +1,7 @@
 {
   "version": 1,
   "status": "ready",
-  "collectedOn": "2026-11-14",
+  "collectedOn": "2026-11-15",
   "months": [
     "202512",
     "202601",
@@ -80,7 +80,7 @@
     {
       "code": "11380",
       "name": "서울특별시 은평구",
-      "asset": "sales-11380-f46702e154b5.json.gz"
+      "asset": "sales-11380-82e50eb85209.json.gz"
     },
     {
       "code": "11410",
@@ -155,7 +155,7 @@
     {
       "code": "41111",
       "name": "경기도 수원시 장안구",
-      "asset": "sales-41111-cf7f51e38a72.json.gz"
+      "asset": "sales-41111-ff2ea63a3d5d.json.gz"
     },
     {
       "code": "41113",
@@ -165,7 +165,7 @@
     {
       "code": "41115",
       "name": "경기도 수원시 팔달구",
-      "asset": "sales-41115-532fa47712d9.json.gz"
+      "asset": "sales-41115-f21d4427ee5e.json.gz"
     },
     {
       "code": "41117",
@@ -300,12 +300,12 @@
     {
       "code": "41370",
       "name": "경기도 오산시",
-      "asset": "sales-41370-909c95fbcf64.json.gz"
+      "asset": "sales-41370-0c04cc63c91c.json.gz"
     },
     {
       "code": "41390",
       "name": "경기도 시흥시",
-      "asset": "sales-41390-b45ae45018ec.json.gz"
+      "asset": "sales-41390-61cdb5b02e97.json.gz"
     },
     {
       "code": "41410",
@@ -340,7 +340,7 @@
     {
       "code": "41465",
       "name": "경기도 용인시 수지구",
-      "asset": "sales-41465-50bfc6cc8acb.json.gz"
+      "asset": "sales-41465-44f360208b28.json.gz"
     },
     {
       "code": "41480",
@@ -370,7 +370,7 @@
     {
       "code": "41591",
       "name": "경기도 화성시 만세구",
-      "asset": "sales-41591-9ba123cd45e7.json.gz"
+      "asset": "sales-41591-b9a612a36a10.json.gz"
     },
     {
       "code": "41593",

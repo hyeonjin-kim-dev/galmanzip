@@ -1,6 +1,6 @@
 {
-  "apiRequests": 1001,
-  "collectedOn": "2026-11-14",
+  "apiRequests": 991,
+  "collectedOn": "2026-11-15",
   "months": [
     "202512",
     "202601",
@@ -109,9 +109,9 @@
     {
       "code": "11380",
       "name": "서울특별시 은평구",
-      "asset": "sales-11380-f46702e154b5.json.gz",
+      "asset": "sales-11380-82e50eb85209.json.gz",
       "apartments": 327,
-      "records": 3122,
+      "records": 3128,
       "cancelled": 101
     },
     {
@@ -184,7 +184,7 @@
       "asset": "sales-11620-e0a9175355ab.json.gz",
       "apartments": 205,
       "records": 2309,
-      "cancelled": 90
+      "cancelled": 91
     },
     {
       "code": "11650",
@@ -229,9 +229,9 @@
     {
       "code": "41111",
       "name": "경기도 수원시 장안구",
-      "asset": "sales-41111-cf7f51e38a72.json.gz",
+      "asset": "sales-41111-ff2ea63a3d5d.json.gz",
       "apartments": 137,
-      "records": 2925,
+      "records": 2928,
       "cancelled": 40
     },
     {
@@ -245,9 +245,9 @@
     {
       "code": "41115",
       "name": "경기도 수원시 팔달구",
-      "asset": "sales-41115-532fa47712d9.json.gz",
+      "asset": "sales-41115-f21d4427ee5e.json.gz",
       "apartments": 106,
-      "records": 2621,
+      "records": 2622,
       "cancelled": 72
     },
     {
@@ -461,18 +461,18 @@
     {
       "code": "41370",
       "name": "경기도 오산시",
-      "asset": "sales-41370-909c95fbcf64.json.gz",
+      "asset": "sales-41370-0c04cc63c91c.json.gz",
       "apartments": 112,
       "records": 3510,
-      "cancelled": 130
+      "cancelled": 131
     },
     {
       "code": "41390",
       "name": "경기도 시흥시",
-      "asset": "sales-41390-b45ae45018ec.json.gz",
+      "asset": "sales-41390-61cdb5b02e97.json.gz",
       "apartments": 294,
       "records": 5910,
-      "cancelled": 216
+      "cancelled": 217
     },
     {
       "code": "41410",
@@ -525,10 +525,10 @@
     {
       "code": "41465",
       "name": "경기도 용인시 수지구",
-      "asset": "sales-41465-50bfc6cc8acb.json.gz",
+      "asset": "sales-41465-44f360208b28.json.gz",
       "apartments": 239,
       "records": 6188,
-      "cancelled": 154
+      "cancelled": 155
     },
     {
       "code": "41480",
@@ -573,10 +573,10 @@
     {
       "code": "41591",
       "name": "경기도 화성시 만세구",
-      "asset": "sales-41591-9ba123cd45e7.json.gz",
+      "asset": "sales-41591-b9a612a36a10.json.gz",
       "apartments": 79,
       "records": 1292,
-      "cancelled": 58
+      "cancelled": 59
     },
     {
       "code": "41593",
