@@ -1,7 +1,7 @@
 {
   "version": 1,
   "status": "ready",
-  "collectedOn": "2026-11-15",
+  "collectedOn": "2026-11-16",
   "months": [
     "202512",
     "202601",
@@ -160,12 +160,12 @@
     {
       "code": "41113",
       "name": "경기도 수원시 권선구",
-      "asset": "sales-41113-365b47e74a55.json.gz"
+      "asset": "sales-41113-635758a390f2.json.gz"
     },
     {
       "code": "41115",
       "name": "경기도 수원시 팔달구",
-      "asset": "sales-41115-f21d4427ee5e.json.gz"
+      "asset": "sales-41115-996b0c456786.json.gz"
     },
     {
       "code": "41117",
@@ -180,7 +180,7 @@
     {
       "code": "41131",
       "name": "경기도 성남시 수정구",
-      "asset": "sales-41131-065398353854.json.gz"
+      "asset": "sales-41131-4ea4b9a2ae01.json.gz"
     },
     {
       "code": "41133",
@@ -205,7 +205,7 @@
     {
       "code": "41171",
       "name": "경기도 안양시 만안구",
-      "asset": "sales-41171-890ace95dcab.json.gz"
+      "asset": "sales-41171-517dca676dea.json.gz"
     },
     {
       "code": "41173",
@@ -255,7 +255,7 @@
     {
       "code": "41271",
       "name": "경기도 안산시 상록구",
-      "asset": "sales-41271-ad609506f0e3.json.gz"
+      "asset": "sales-41271-9438541aad8b.json.gz"
     },
     {
       "code": "41273",
@@ -340,7 +340,7 @@
     {
       "code": "41465",
       "name": "경기도 용인시 수지구",
-      "asset": "sales-41465-44f360208b28.json.gz"
+      "asset": "sales-41465-52a4aa66b697.json.gz"
     },
     {
       "code": "41480",
@@ -350,7 +350,7 @@
     {
       "code": "41500",
       "name": "경기도 이천시",
-      "asset": "sales-41500-b287cccfab2a.json.gz"
+      "asset": "sales-41500-158e2b7fc3e9.json.gz"
     },
     {
       "code": "41550",

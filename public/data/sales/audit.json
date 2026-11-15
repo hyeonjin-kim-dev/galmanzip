@@ -1,6 +1,6 @@
 {
-  "apiRequests": 991,
-  "collectedOn": "2026-11-15",
+  "apiRequests": 1007,
+  "collectedOn": "2026-11-16",
   "months": [
     "202512",
     "202601",
@@ -237,17 +237,17 @@
     {
       "code": "41113",
       "name": "경기도 수원시 권선구",
-      "asset": "sales-41113-365b47e74a55.json.gz",
+      "asset": "sales-41113-635758a390f2.json.gz",
       "apartments": 178,
-      "records": 5629,
+      "records": 5630,
       "cancelled": 277
     },
     {
       "code": "41115",
       "name": "경기도 수원시 팔달구",
-      "asset": "sales-41115-f21d4427ee5e.json.gz",
+      "asset": "sales-41115-996b0c456786.json.gz",
       "apartments": 106,
-      "records": 2622,
+      "records": 2634,
       "cancelled": 72
     },
     {
@@ -269,9 +269,9 @@
     {
       "code": "41131",
       "name": "경기도 성남시 수정구",
-      "asset": "sales-41131-065398353854.json.gz",
+      "asset": "sales-41131-4ea4b9a2ae01.json.gz",
       "apartments": 85,
-      "records": 1391,
+      "records": 1400,
       "cancelled": 38
     },
     {
@@ -309,9 +309,9 @@
     {
       "code": "41171",
       "name": "경기도 안양시 만안구",
-      "asset": "sales-41171-890ace95dcab.json.gz",
+      "asset": "sales-41171-517dca676dea.json.gz",
       "apartments": 173,
-      "records": 3064,
+      "records": 3067,
       "cancelled": 142
     },
     {
@@ -389,10 +389,10 @@
     {
       "code": "41271",
       "name": "경기도 안산시 상록구",
-      "asset": "sales-41271-ad609506f0e3.json.gz",
+      "asset": "sales-41271-9438541aad8b.json.gz",
       "apartments": 73,
       "records": 1756,
-      "cancelled": 77
+      "cancelled": 78
     },
     {
       "code": "41273",
@@ -525,9 +525,9 @@
     {
       "code": "41465",
       "name": "경기도 용인시 수지구",
-      "asset": "sales-41465-44f360208b28.json.gz",
+      "asset": "sales-41465-52a4aa66b697.json.gz",
       "apartments": 239,
-      "records": 6188,
+      "records": 6213,
       "cancelled": 155
     },
     {
@@ -541,10 +541,10 @@
     {
       "code": "41500",
       "name": "경기도 이천시",
-      "asset": "sales-41500-b287cccfab2a.json.gz",
+      "asset": "sales-41500-158e2b7fc3e9.json.gz",
       "apartments": 149,
       "records": 1854,
-      "cancelled": 73
+      "cancelled": 74
     },
     {
       "code": "41550",
