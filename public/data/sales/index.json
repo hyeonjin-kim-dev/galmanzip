@@ -1,7 +1,7 @@
 {
   "version": 1,
   "status": "ready",
-  "collectedOn": "2026-11-16",
+  "collectedOn": "2026-11-17",
   "months": [
     "202512",
     "202601",
@@ -30,112 +30,112 @@
     {
       "code": "11140",
       "name": "서울특별시 중구",
-      "asset": "sales-11140-f28171e561e8.json.gz"
+      "asset": "sales-11140-1c8c2c29531a.json.gz"
     },
     {
       "code": "11170",
       "name": "서울특별시 용산구",
-      "asset": "sales-11170-75ddd1a5f005.json.gz"
+      "asset": "sales-11170-ae04eda9a5d1.json.gz"
     },
     {
       "code": "11200",
       "name": "서울특별시 성동구",
-      "asset": "sales-11200-afd8493f9e12.json.gz"
+      "asset": "sales-11200-def5e841f02c.json.gz"
     },
     {
       "code": "11215",
       "name": "서울특별시 광진구",
-      "asset": "sales-11215-9ae778665c6a.json.gz"
+      "asset": "sales-11215-52a4280dcc94.json.gz"
     },
     {
       "code": "11230",
       "name": "서울특별시 동대문구",
-      "asset": "sales-11230-19aca62d1937.json.gz"
+      "asset": "sales-11230-187acbe2c865.json.gz"
     },
     {
       "code": "11260",
       "name": "서울특별시 중랑구",
-      "asset": "sales-11260-f790d90aeba5.json.gz"
+      "asset": "sales-11260-daf0da272a5f.json.gz"
     },
     {
       "code": "11290",
       "name": "서울특별시 성북구",
-      "asset": "sales-11290-2a67c1f53623.json.gz"
+      "asset": "sales-11290-02eaa290d312.json.gz"
     },
     {
       "code": "11305",
       "name": "서울특별시 강북구",
-      "asset": "sales-11305-69887b35203e.json.gz"
+      "asset": "sales-11305-b7e8e266caa5.json.gz"
     },
     {
       "code": "11320",
       "name": "서울특별시 도봉구",
-      "asset": "sales-11320-f4d2546fd1f9.json.gz"
+      "asset": "sales-11320-2ed5d6f5b2a3.json.gz"
     },
     {
       "code": "11350",
       "name": "서울특별시 노원구",
-      "asset": "sales-11350-f31f0804def3.json.gz"
+      "asset": "sales-11350-92176e72e704.json.gz"
     },
     {
       "code": "11380",
       "name": "서울특별시 은평구",
-      "asset": "sales-11380-82e50eb85209.json.gz"
+      "asset": "sales-11380-e4db391522fe.json.gz"
     },
     {
       "code": "11410",
       "name": "서울특별시 서대문구",
-      "asset": "sales-11410-6e9f60110ff3.json.gz"
+      "asset": "sales-11410-995d6e730e6f.json.gz"
     },
     {
       "code": "11440",
       "name": "서울특별시 마포구",
-      "asset": "sales-11440-23baaf6adb37.json.gz"
+      "asset": "sales-11440-4db0d30eb52d.json.gz"
     },
     {
       "code": "11470",
       "name": "서울특별시 양천구",
-      "asset": "sales-11470-3ad1fd49be60.json.gz"
+      "asset": "sales-11470-647e7e5e76a6.json.gz"
     },
     {
       "code": "11500",
       "name": "서울특별시 강서구",
-      "asset": "sales-11500-8e47c97cb125.json.gz"
+      "asset": "sales-11500-09c9309d86ec.json.gz"
     },
     {
       "code": "11530",
       "name": "서울특별시 구로구",
-      "asset": "sales-11530-eb77c87ac51e.json.gz"
+      "asset": "sales-11530-2cb1b8340140.json.gz"
     },
     {
       "code": "11545",
       "name": "서울특별시 금천구",
-      "asset": "sales-11545-9907b1d39acc.json.gz"
+      "asset": "sales-11545-d13fe729c284.json.gz"
     },
     {
       "code": "11560",
       "name": "서울특별시 영등포구",
-      "asset": "sales-11560-b67314e9d13e.json.gz"
+      "asset": "sales-11560-a7165c07c78c.json.gz"
     },
     {
       "code": "11590",
       "name": "서울특별시 동작구",
-      "asset": "sales-11590-ef212b75dec3.json.gz"
+      "asset": "sales-11590-1f6950f0a045.json.gz"
     },
     {
       "code": "11620",
       "name": "서울특별시 관악구",
-      "asset": "sales-11620-e0a9175355ab.json.gz"
+      "asset": "sales-11620-1a7eba26d819.json.gz"
     },
     {
       "code": "11650",
       "name": "서울특별시 서초구",
-      "asset": "sales-11650-087e5fa3147c.json.gz"
+      "asset": "sales-11650-3051a33fab42.json.gz"
     },
     {
       "code": "11680",
       "name": "서울특별시 강남구",
-      "asset": "sales-11680-56e3a6fce75d.json.gz"
+      "asset": "sales-11680-4cd600df3e45.json.gz"
     },
     {
       "code": "11710",
@@ -145,7 +145,7 @@
     {
       "code": "11740",
       "name": "서울특별시 강동구",
-      "asset": "sales-11740-1f71afefb260.json.gz"
+      "asset": "sales-11740-dabc4ac45e2d.json.gz"
     },
     {
       "code": "41110",
@@ -155,22 +155,22 @@
     {
       "code": "41111",
       "name": "경기도 수원시 장안구",
-      "asset": "sales-41111-ff2ea63a3d5d.json.gz"
+      "asset": "sales-41111-5146ceb65c6b.json.gz"
     },
     {
       "code": "41113",
       "name": "경기도 수원시 권선구",
-      "asset": "sales-41113-635758a390f2.json.gz"
+      "asset": "sales-41113-df8c71e8ed6a.json.gz"
     },
     {
       "code": "41115",
       "name": "경기도 수원시 팔달구",
-      "asset": "sales-41115-996b0c456786.json.gz"
+      "asset": "sales-41115-3ab85b11eacd.json.gz"
     },
     {
       "code": "41117",
       "name": "경기도 수원시 영통구",
-      "asset": "sales-41117-ed9bd61db033.json.gz"
+      "asset": "sales-41117-f1111422cc69.json.gz"
     },
     {
       "code": "41130",
@@ -180,22 +180,22 @@
     {
       "code": "41131",
       "name": "경기도 성남시 수정구",
-      "asset": "sales-41131-4ea4b9a2ae01.json.gz"
+      "asset": "sales-41131-a1b11c546381.json.gz"
     },
     {
       "code": "41133",
       "name": "경기도 성남시 중원구",
-      "asset": "sales-41133-903a72064f15.json.gz"
+      "asset": "sales-41133-1da786596e07.json.gz"
     },
     {
       "code": "41135",
       "name": "경기도 성남시 분당구",
-      "asset": "sales-41135-4d2a8ff1636e.json.gz"
+      "asset": "sales-41135-b3f39752907a.json.gz"
     },
     {
       "code": "41150",
       "name": "경기도 의정부시",
-      "asset": "sales-41150-96c6a354ca48.json.gz"
+      "asset": "sales-41150-6cd70e5a8405.json.gz"
     },
     {
       "code": "41170",
@@ -205,7 +205,7 @@
     {
       "code": "41171",
       "name": "경기도 안양시 만안구",
-      "asset": "sales-41171-517dca676dea.json.gz"
+      "asset": "sales-41171-df685b405e72.json.gz"
     },
     {
       "code": "41173",
@@ -220,32 +220,32 @@
     {
       "code": "41192",
       "name": "경기도 부천시 원미구",
-      "asset": "sales-41192-febeb47a707a.json.gz"
+      "asset": "sales-41192-ba178f53e862.json.gz"
     },
     {
       "code": "41194",
       "name": "경기도 부천시 소사구",
-      "asset": "sales-41194-1c9121869d8f.json.gz"
+      "asset": "sales-41194-b29474c24530.json.gz"
     },
     {
       "code": "41196",
       "name": "경기도 부천시 오정구",
-      "asset": "sales-41196-b554c128eae9.json.gz"
+      "asset": "sales-41196-7c1cda001ac2.json.gz"
     },
     {
       "code": "41210",
       "name": "경기도 광명시",
-      "asset": "sales-41210-f0cb855690af.json.gz"
+      "asset": "sales-41210-db557afd2873.json.gz"
     },
     {
       "code": "41220",
       "name": "경기도 평택시",
-      "asset": "sales-41220-047842ba1603.json.gz"
+      "asset": "sales-41220-7668c3dcedf5.json.gz"
     },
     {
       "code": "41250",
       "name": "경기도 동두천시",
-      "asset": "sales-41250-b1309dd540c9.json.gz"
+      "asset": "sales-41250-04662be1e399.json.gz"
     },
     {
       "code": "41270",
@@ -255,12 +255,12 @@
     {
       "code": "41271",
       "name": "경기도 안산시 상록구",
-      "asset": "sales-41271-9438541aad8b.json.gz"
+      "asset": "sales-41271-bec0a08f7438.json.gz"
     },
     {
       "code": "41273",
       "name": "경기도 안산시 단원구",
-      "asset": "sales-41273-a68876577fda.json.gz"
+      "asset": "sales-41273-d70e4f090de8.json.gz"
     },
     {
       "code": "41280",
@@ -270,57 +270,57 @@
     {
       "code": "41281",
       "name": "경기도 고양시 덕양구",
-      "asset": "sales-41281-4902d21a0d77.json.gz"
+      "asset": "sales-41281-412182bf3cbe.json.gz"
     },
     {
       "code": "41285",
       "name": "경기도 고양시 일산동구",
-      "asset": "sales-41285-705899e6ad48.json.gz"
+      "asset": "sales-41285-533a9f1fc738.json.gz"
     },
     {
       "code": "41287",
       "name": "경기도 고양시 일산서구",
-      "asset": "sales-41287-a25a9f014300.json.gz"
+      "asset": "sales-41287-47ffd8c3c827.json.gz"
     },
     {
       "code": "41290",
       "name": "경기도 과천시",
-      "asset": "sales-41290-d01c3b3f1fd1.json.gz"
+      "asset": "sales-41290-5e971936b53e.json.gz"
     },
     {
       "code": "41310",
       "name": "경기도 구리시",
-      "asset": "sales-41310-786aa47264c8.json.gz"
+      "asset": "sales-41310-884448ec78a2.json.gz"
     },
     {
       "code": "41360",
       "name": "경기도 남양주시",
-      "asset": "sales-41360-fa216566bb5b.json.gz"
+      "asset": "sales-41360-b4cdb41d252a.json.gz"
     },
     {
       "code": "41370",
       "name": "경기도 오산시",
-      "asset": "sales-41370-0c04cc63c91c.json.gz"
+      "asset": "sales-41370-636dbcbfdee1.json.gz"
     },
     {
       "code": "41390",
       "name": "경기도 시흥시",
-      "asset": "sales-41390-61cdb5b02e97.json.gz"
+      "asset": "sales-41390-835872e222a7.json.gz"
     },
     {
       "code": "41410",
       "name": "경기도 군포시",
-      "asset": "sales-41410-50ce26a773ea.json.gz"
+      "asset": "sales-41410-5a6507485511.json.gz"
     },
     {
       "code": "41430",
       "name": "경기도 의왕시",
-      "asset": "sales-41430-a33ab643eee1.json.gz"
+      "asset": "sales-41430-51bd1a15ef9b.json.gz"
     },
     {
       "code": "41450",
       "name": "경기도 하남시",
-      "asset": "sales-41450-f40a1ae15fbb.json.gz"
+      "asset": "sales-41450-de9c6b26c975.json.gz"
     },
     {
       "code": "41460",
@@ -330,37 +330,37 @@
     {
       "code": "41461",
       "name": "경기도 용인시 처인구",
-      "asset": "sales-41461-ccd973a00bce.json.gz"
+      "asset": "sales-41461-865bbac3a7ab.json.gz"
     },
     {
       "code": "41463",
       "name": "경기도 용인시 기흥구",
-      "asset": "sales-41463-b0da8ae65259.json.gz"
+      "asset": "sales-41463-890e92f12267.json.gz"
     },
     {
       "code": "41465",
       "name": "경기도 용인시 수지구",
-      "asset": "sales-41465-52a4aa66b697.json.gz"
+      "asset": "sales-41465-cebd8b64910e.json.gz"
     },
     {
       "code": "41480",
       "name": "경기도 파주시",
-      "asset": "sales-41480-893051f0da3e.json.gz"
+      "asset": "sales-41480-334749b5a013.json.gz"
     },
     {
       "code": "41500",
       "name": "경기도 이천시",
-      "asset": "sales-41500-158e2b7fc3e9.json.gz"
+      "asset": "sales-41500-53a466f717e8.json.gz"
     },
     {
       "code": "41550",
       "name": "경기도 안성시",
-      "asset": "sales-41550-5fbb43d22db7.json.gz"
+      "asset": "sales-41550-c6c82dbae442.json.gz"
     },
     {
       "code": "41570",
       "name": "경기도 김포시",
-      "asset": "sales-41570-57fb881da2a9.json.gz"
+      "asset": "sales-41570-c9610e0d4cfd.json.gz"
     },
     {
       "code": "41590",
@@ -370,47 +370,47 @@
     {
       "code": "41591",
       "name": "경기도 화성시 만세구",
-      "asset": "sales-41591-b9a612a36a10.json.gz"
+      "asset": "sales-41591-02673e0aaef2.json.gz"
     },
     {
       "code": "41593",
       "name": "경기도 화성시 효행구",
-      "asset": "sales-41593-fa4e99647f6b.json.gz"
+      "asset": "sales-41593-097d1d31cd3c.json.gz"
     },
     {
       "code": "41595",
       "name": "경기도 화성시 병점구",
-      "asset": "sales-41595-72abd43dfc88.json.gz"
+      "asset": "sales-41595-7ac3a690ced0.json.gz"
     },
     {
       "code": "41597",
       "name": "경기도 화성시 동탄구",
-      "asset": "sales-41597-571c4a4ec3f7.json.gz"
+      "asset": "sales-41597-fac36f4ee07b.json.gz"
     },
     {
       "code": "41610",
       "name": "경기도 광주시",
-      "asset": "sales-41610-0918a5562313.json.gz"
+      "asset": "sales-41610-c6e4650c579d.json.gz"
     },
     {
       "code": "41630",
       "name": "경기도 양주시",
-      "asset": "sales-41630-bde6020f6a93.json.gz"
+      "asset": "sales-41630-0039e69d58ac.json.gz"
     },
     {
       "code": "41650",
       "name": "경기도 포천시",
-      "asset": "sales-41650-afd174be8fc3.json.gz"
+      "asset": "sales-41650-42aebe7818ee.json.gz"
     },
     {
       "code": "41670",
       "name": "경기도 여주시",
-      "asset": "sales-41670-91eb5aeaa74b.json.gz"
+      "asset": "sales-41670-3120b3ba2778.json.gz"
     },
     {
       "code": "41800",
       "name": "경기도 연천군",
-      "asset": "sales-41800-2cd0833af873.json.gz"
+      "asset": "sales-41800-7091054ff807.json.gz"
     },
     {
       "code": "41820",
@@ -420,7 +420,7 @@
     {
       "code": "41830",
       "name": "경기도 양평군",
-      "asset": "sales-41830-767f2f59da10.json.gz"
+      "asset": "sales-41830-cb84e7d79a5e.json.gz"
     }
   ]
 }
