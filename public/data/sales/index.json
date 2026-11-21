@@ -1,7 +1,7 @@
 {
   "version": 1,
   "status": "ready",
-  "collectedOn": "2026-11-21",
+  "collectedOn": "2026-11-22",
   "months": [
     "202512",
     "202601",
@@ -60,7 +60,7 @@
     {
       "code": "11290",
       "name": "서울특별시 성북구",
-      "asset": "sales-11290-b8371bd4e0d4.json.gz"
+      "asset": "sales-11290-992f73cd6d67.json.gz"
     },
     {
       "code": "11305",
@@ -100,7 +100,7 @@
     {
       "code": "11500",
       "name": "서울특별시 강서구",
-      "asset": "sales-11500-67fa73db13f4.json.gz"
+      "asset": "sales-11500-20c550ddd5c8.json.gz"
     },
     {
       "code": "11530",
@@ -115,7 +115,7 @@
     {
       "code": "11560",
       "name": "서울특별시 영등포구",
-      "asset": "sales-11560-7dd05e9ccef7.json.gz"
+      "asset": "sales-11560-85b05c011461.json.gz"
     },
     {
       "code": "11590",
@@ -125,7 +125,7 @@
     {
       "code": "11620",
       "name": "서울특별시 관악구",
-      "asset": "sales-11620-b6fc04ccf67f.json.gz"
+      "asset": "sales-11620-2f6065513acd.json.gz"
     },
     {
       "code": "11650",
@@ -275,7 +275,7 @@
     {
       "code": "41285",
       "name": "경기도 고양시 일산동구",
-      "asset": "sales-41285-c92a2e311481.json.gz"
+      "asset": "sales-41285-e63f79d11c19.json.gz"
     },
     {
       "code": "41287",
@@ -330,7 +330,7 @@
     {
       "code": "41461",
       "name": "경기도 용인시 처인구",
-      "asset": "sales-41461-d21bced3e13c.json.gz"
+      "asset": "sales-41461-dea3a9589058.json.gz"
     },
     {
       "code": "41463",
